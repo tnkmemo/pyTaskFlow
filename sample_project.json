@@ -1,0 +1,38 @@
+{
+  "project_name": "工程依存関係サンプル",
+  "tasks": [
+    {"id":"T01","name":"仕様確定","status":"完了","link":"https://google.com","outputs":["A01"],"resources":["M01"],"x":60,"y":250},
+    {"id":"T02","name":"RTL設計","status":"進行中","link":"C:\\Project\\hoge.xlsx","inputs":["A01"],"outputs":["A02"],"resources":["M02","R01"],"x":350,"y":40},
+    {"id":"T03","name":"検証仕様作成","status":"完了","link":"C:\\Project\\verification","inputs":["A01"],"outputs":["A03"],"resources":["M03"],"x":350,"y":350},
+    {"id":"T04","name":"単体検証","status":"未着手","link":"C:\\Project\\unit_test","inputs":["A02","A03"],"outputs":["A04"],"resources":["M04","T01_DOC"],"x":670,"y":180},
+    {"id":"T05","name":"結合検証","status":"未着手","link":"C:\\Project\\integration","inputs":["A04"],"outputs":["A05"],"resources":["M04"],"x":970,"y":100},
+    {"id":"T06","name":"レビュー","status":"未着手","link":"C:\\Project\\review","inputs":["A02"],"outputs":["A06"],"resources":["R01"],"x":690,"y":430},
+    {"id":"T07","name":"リリース判定","status":"未着手","link":"C:\\Project\\release","inputs":["A04","A06"],"outputs":["A07"],"resources":["M05"],"x":1010,"y":400}
+  ],
+  "artifacts": [
+    {"id":"A01","name":"仕様書","kind":"artifact","type":"xlsx","link":"C:\\Project\\spec\\仕様書.xlsx","producer":"T01","consumers":["T02","T03"]},
+    {"id":"A02","name":"RTL一式","kind":"artifact","type":"folder","link":"C:\\Project\\rtl","producer":"T02","consumers":["T04","T06"]},
+    {"id":"A03","name":"検証仕様書","kind":"artifact","type":"xlsx","link":"C:\\Project\\verification\\検証仕様書.xlsx","producer":"T03","consumers":["T04"]},
+    {"id":"A04","name":"単体検証結果","kind":"artifact","type":"xlsx","link":"C:\\Project\\unit_test\\単体検証結果.xlsx","producer":"T04","consumers":["T05","T07"]},
+    {"id":"A05","name":"結合検証結果","kind":"artifact","type":"xlsx","link":"C:\\Project\\integration\\結合検証結果.xlsx","producer":"T05","consumers":[]},
+    {"id":"A06","name":"レビュー記録","kind":"artifact","type":"xlsx","link":"C:\\Project\\review\\レビュー記録.xlsx","producer":"T06","consumers":["T07"]},
+    {"id":"A07","name":"リリース判定資料","kind":"artifact","type":"xlsx","link":"C:\\Project\\release\\リリース判定資料.xlsx","producer":"T07","consumers":[]},
+    {"id":"M01","name":"仕様確定手順書","kind":"manual","type":"pdf","link":"C:\\Project\\manuals\\spec_flow.pdf","consumers":["T01"]},
+    {"id":"M02","name":"RTL設計マニュアル","kind":"manual","type":"pdf","link":"C:\\Project\\manuals\\rtl_design.pdf","consumers":["T02"]},
+    {"id":"M03","name":"検証仕様作成ガイド","kind":"manual","type":"pdf","link":"C:\\Project\\manuals\\verification_plan.pdf","consumers":["T03"]},
+    {"id":"M04","name":"検証実施マニュアル","kind":"manual","type":"pdf","link":"C:\\Project\\manuals\\verification_run.pdf","consumers":["T04","T05"]},
+    {"id":"M05","name":"リリース判定基準","kind":"manual","type":"xlsx","link":"C:\\Project\\manuals\\release_criteria.xlsx","consumers":["T07"]},
+    {"id":"R01","name":"コーディング規約","kind":"reference","type":"url","link":"https://example.com/coding-rule","consumers":["T02","T06"]},
+    {"id":"T01_DOC","name":"検証結果テンプレート","kind":"template","type":"xlsx","link":"C:\\Project\\templates\\verification_result.xlsx","consumers":["T04"]}
+  ],
+  "dependencies": [
+    {"from":"T01","to":"T02"},
+    {"from":"T01","to":"T03"},
+    {"from":"T02","to":"T04"},
+    {"from":"T03","to":"T04"},
+    {"from":"T02","to":"T06"},
+    {"from":"T04","to":"T05"},
+    {"from":"T04","to":"T07"},
+    {"from":"T06","to":"T07"}
+  ]
+}
