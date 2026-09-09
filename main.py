@@ -11,18 +11,34 @@ from urllib.parse import urlparse
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QAction, QBrush, QColor, QPainter, QPainterPath, QPen, QPolygonF
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QApplication,
+    QComboBox,
+    QDockWidget,
     QFileDialog,
+    QFormLayout,
     QGraphicsItem,
     QGraphicsPathItem,
     QGraphicsRectItem,
     QGraphicsScene,
     QGraphicsTextItem,
     QGraphicsView,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMainWindow,
     QMenu,
     QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QDoubleSpinBox,
+    QStackedWidget,
+    QTabWidget,
     QToolBar,
+    QVBoxLayout,
+    QWidget,
 )
 
 STATUS_COLORS = {
@@ -31,6 +47,10 @@ STATUS_COLORS = {
     "完了": QColor("#BBF7D0"),
     "保留": QColor("#FDE68A"),
 }
+
+STATUS_OPTIONS = list(STATUS_COLORS.keys())
+ARTIFACT_KIND_OPTIONS = ["artifact", "manual", "reference", "template"]
+ARTIFACT_TYPE_OPTIONS = ["xlsx", "pdf", "folder", "url", "docx", "txt", "other"]
 
 
 def open_link(link: str) -> None:
@@ -290,6 +310,11 @@ class TaskNodeItem(QGraphicsRectItem):
             open_link(link)
         super().mouseDoubleClickEvent(event)
 
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if not self.app_window._layout_in_progress:
+            self.app_window.update_json_preview()
+
     def contextMenuEvent(self, event):
         menu = QMenu()
         open_action = menu.addAction("リンクを開く")
@@ -380,13 +405,21 @@ class MainWindow(QMainWindow):
         self.current_file = None
         self.modified = False
         self._layout_in_progress = False
+        self._updating_editor = False
+        self.selected_kind = None
+        self.selected_id = None
 
         self.build_toolbar()
+        self.build_editor_ui()
         self.statusBar().showMessage("JSONを開くか、サンプルを読み込んでください")
 
     def build_toolbar(self):
         toolbar = QToolBar("Main")
         self.addToolBar(toolbar)
+
+        new_action = QAction("新規", self)
+        new_action.triggered.connect(self.new_project)
+        toolbar.addAction(new_action)
 
         open_action = QAction("JSONを開く", self)
         open_action.triggered.connect(self.open_json)
@@ -418,11 +451,605 @@ class MainWindow(QMainWindow):
         fit_action.triggered.connect(self.fit_all)
         toolbar.addAction(fit_action)
 
+    def build_editor_ui(self):
+        project_dock = QDockWidget("Project", self)
+        project_dock.setObjectName("projectDock")
+        project_widget = QWidget()
+        project_layout = QVBoxLayout(project_widget)
+
+        self.project_tabs = QTabWidget()
+        self.task_list = QListWidget()
+        self.artifact_list = QListWidget()
+        self.dependency_list = QListWidget()
+        for list_widget in (self.task_list, self.artifact_list, self.dependency_list):
+            list_widget.setSelectionMode(QAbstractItemView.SingleSelection)
+
+        self.project_tabs.addTab(self.task_list, "Tasks")
+        self.project_tabs.addTab(self.artifact_list, "Artifacts")
+        self.project_tabs.addTab(self.dependency_list, "Dependencies")
+        project_layout.addWidget(self.project_tabs)
+
+        button_row = QHBoxLayout()
+        add_button = QPushButton("追加")
+        delete_button = QPushButton("削除")
+        add_button.clicked.connect(self.add_selected_tab_item)
+        delete_button.clicked.connect(self.delete_selected_item)
+        button_row.addWidget(add_button)
+        button_row.addWidget(delete_button)
+        project_layout.addLayout(button_row)
+
+        project_dock.setWidget(project_widget)
+        self.addDockWidget(Qt.LeftDockWidgetArea, project_dock)
+
+        self.task_list.currentItemChanged.connect(self.on_task_item_selected)
+        self.artifact_list.currentItemChanged.connect(self.on_artifact_item_selected)
+        self.dependency_list.currentItemChanged.connect(self.on_dependency_item_selected)
+
+        editor_dock = QDockWidget("Editor", self)
+        editor_dock.setObjectName("editorDock")
+        editor_tabs = QTabWidget()
+        editor_tabs.addTab(self.build_form_stack(), "Edit")
+        self.json_preview = QPlainTextEdit()
+        self.json_preview.setReadOnly(True)
+        editor_tabs.addTab(self.json_preview, "JSON")
+        editor_dock.setWidget(editor_tabs)
+        self.addDockWidget(Qt.RightDockWidgetArea, editor_dock)
+
+        self.refresh_editor()
+
+    def build_form_stack(self):
+        self.form_stack = QStackedWidget()
+        empty = QLabel("左の一覧から編集する項目を選択してください")
+        empty.setAlignment(Qt.AlignCenter)
+        self.form_stack.addWidget(empty)
+        self.form_stack.addWidget(self.build_task_form())
+        self.form_stack.addWidget(self.build_artifact_form())
+        self.form_stack.addWidget(self.build_dependency_form())
+        return self.form_stack
+
+    def build_task_form(self):
+        widget = QWidget()
+        form = QFormLayout(widget)
+        self.task_id_edit = QLineEdit()
+        self.task_name_edit = QLineEdit()
+        self.task_status_combo = QComboBox()
+        self.task_status_combo.addItems(STATUS_OPTIONS)
+        self.task_link_edit = QLineEdit()
+        self.task_inputs_edit = QLineEdit()
+        self.task_outputs_edit = QLineEdit()
+        self.task_resources_edit = QLineEdit()
+        self.task_x_spin = self.make_position_spinbox()
+        self.task_y_spin = self.make_position_spinbox()
+
+        form.addRow("ID", self.task_id_edit)
+        form.addRow("Name", self.task_name_edit)
+        form.addRow("Status", self.task_status_combo)
+        form.addRow("Link", self.with_link_buttons(self.task_link_edit))
+        form.addRow("Inputs", self.task_inputs_edit)
+        form.addRow("Outputs", self.task_outputs_edit)
+        form.addRow("Resources", self.task_resources_edit)
+        form.addRow("X", self.task_x_spin)
+        form.addRow("Y", self.task_y_spin)
+
+        for widget_to_watch in (
+            self.task_id_edit,
+            self.task_name_edit,
+            self.task_link_edit,
+            self.task_inputs_edit,
+            self.task_outputs_edit,
+            self.task_resources_edit,
+        ):
+            widget_to_watch.editingFinished.connect(self.apply_task_form)
+        self.task_status_combo.currentTextChanged.connect(self.apply_task_form)
+        self.task_x_spin.valueChanged.connect(self.apply_task_form)
+        self.task_y_spin.valueChanged.connect(self.apply_task_form)
+        return widget
+
+    def build_artifact_form(self):
+        widget = QWidget()
+        form = QFormLayout(widget)
+        self.artifact_id_edit = QLineEdit()
+        self.artifact_name_edit = QLineEdit()
+        self.artifact_kind_combo = QComboBox()
+        self.artifact_kind_combo.addItems(ARTIFACT_KIND_OPTIONS)
+        self.artifact_type_combo = QComboBox()
+        self.artifact_type_combo.setEditable(True)
+        self.artifact_type_combo.addItems(ARTIFACT_TYPE_OPTIONS)
+        self.artifact_link_edit = QLineEdit()
+
+        form.addRow("ID", self.artifact_id_edit)
+        form.addRow("Name", self.artifact_name_edit)
+        form.addRow("Kind", self.artifact_kind_combo)
+        form.addRow("Type", self.artifact_type_combo)
+        form.addRow("Link", self.with_link_buttons(self.artifact_link_edit))
+
+        self.artifact_id_edit.editingFinished.connect(self.apply_artifact_form)
+        self.artifact_name_edit.editingFinished.connect(self.apply_artifact_form)
+        self.artifact_link_edit.editingFinished.connect(self.apply_artifact_form)
+        self.artifact_kind_combo.currentTextChanged.connect(self.apply_artifact_form)
+        self.artifact_type_combo.currentTextChanged.connect(self.apply_artifact_form)
+        return widget
+
+    def build_dependency_form(self):
+        widget = QWidget()
+        form = QFormLayout(widget)
+        self.dep_from_combo = QComboBox()
+        self.dep_to_combo = QComboBox()
+        form.addRow("From", self.dep_from_combo)
+        form.addRow("To", self.dep_to_combo)
+        self.dep_from_combo.currentTextChanged.connect(self.apply_dependency_form)
+        self.dep_to_combo.currentTextChanged.connect(self.apply_dependency_form)
+        return widget
+
+    def make_position_spinbox(self):
+        spinbox = QDoubleSpinBox()
+        spinbox.setRange(-100000, 100000)
+        spinbox.setDecimals(1)
+        spinbox.setSingleStep(10)
+        return spinbox
+
+    def with_link_buttons(self, line_edit):
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(line_edit)
+        file_button = QPushButton("File")
+        folder_button = QPushButton("Folder")
+        file_button.clicked.connect(lambda: self.pick_file_for(line_edit))
+        folder_button.clicked.connect(lambda: self.pick_folder_for(line_edit))
+        layout.addWidget(file_button)
+        layout.addWidget(folder_button)
+        return widget
+
+    def pick_file_for(self, line_edit):
+        filename, _ = QFileDialog.getOpenFileName(self, "ファイルを選択")
+        if filename:
+            line_edit.setText(filename)
+            line_edit.editingFinished.emit()
+
+    def pick_folder_for(self, line_edit):
+        folder = QFileDialog.getExistingDirectory(self, "フォルダを選択")
+        if folder:
+            line_edit.setText(folder)
+            line_edit.editingFinished.emit()
+
     def set_modified(self, modified=True):
         self.modified = modified
         marker = "*" if modified else ""
         filename = self.current_file.name if self.current_file else "TaskFlow"
         self.setWindowTitle(f"{filename}{marker}")
+
+    def mark_editor_modified(self, rebuild_graph=False):
+        if rebuild_graph:
+            self.refresh_graph_view()
+        self.refresh_editor()
+        self.set_modified(True)
+
+    def id_list_to_text(self, values) -> str:
+        return ", ".join(normalize_id_list(values))
+
+    def text_to_id_list(self, text: str) -> list[str]:
+        return [part.strip() for part in text.split(",") if part.strip()]
+
+    def next_id(self, prefix: str, existing_ids) -> str:
+        used = {str(item_id) for item_id in existing_ids}
+        index = 1
+        while True:
+            candidate = f"{prefix}{index:02d}"
+            if candidate not in used:
+                return candidate
+            index += 1
+
+    def find_task(self, task_id: str):
+        for task in self.project.get("tasks", []):
+            if str(task.get("id")) == task_id:
+                return task
+        return None
+
+    def find_artifact(self, artifact_id: str):
+        for artifact in self.project.get("artifacts", []):
+            if str(artifact.get("id")) == artifact_id:
+                return artifact
+        return None
+
+    def find_dependency(self, index: int):
+        dependencies = self.project.get("dependencies", [])
+        if 0 <= index < len(dependencies):
+            return dependencies[index]
+        return None
+
+    def refresh_editor(self):
+        if not hasattr(self, "task_list"):
+            return
+
+        current_kind = self.selected_kind
+        current_id = self.selected_id
+        current_dep_row = current_id if current_kind == "dependency" else None
+        self._updating_editor = True
+        try:
+            self.task_list.clear()
+            for task in self.project.get("tasks", []):
+                task_id = str(task.get("id", ""))
+                item = QListWidgetItem(f"{task_id}  {task.get('name', '')}")
+                item.setData(Qt.UserRole, task_id)
+                self.task_list.addItem(item)
+                if current_kind == "task" and task_id == current_id:
+                    self.task_list.setCurrentItem(item)
+
+            self.artifact_list.clear()
+            for artifact in self.project.get("artifacts", []):
+                artifact_id = str(artifact.get("id", ""))
+                item = QListWidgetItem(artifact_label(artifact))
+                item.setData(Qt.UserRole, artifact_id)
+                self.artifact_list.addItem(item)
+                if current_kind == "artifact" and artifact_id == current_id:
+                    self.artifact_list.setCurrentItem(item)
+
+            self.dependency_list.clear()
+            for index, dep in enumerate(self.project.get("dependencies", [])):
+                item = QListWidgetItem(f"{dep.get('from', '')} -> {dep.get('to', '')}")
+                item.setData(Qt.UserRole, index)
+                self.dependency_list.addItem(item)
+                if current_kind == "dependency" and index == current_dep_row:
+                    self.dependency_list.setCurrentItem(item)
+
+            task_ids = [str(task.get("id", "")) for task in self.project.get("tasks", []) if task.get("id")]
+            self.dep_from_combo.clear()
+            self.dep_to_combo.clear()
+            self.dep_from_combo.addItems(task_ids)
+            self.dep_to_combo.addItems(task_ids)
+            self.populate_selected_form()
+            self.update_json_preview()
+        finally:
+            self._updating_editor = False
+
+    def update_json_preview(self):
+        self.sync_positions()
+        self.json_preview.setPlainText(json.dumps(self.project, ensure_ascii=False, indent=2))
+
+    def populate_selected_form(self):
+        if self.selected_kind == "task":
+            self.populate_task_form()
+        elif self.selected_kind == "artifact":
+            self.populate_artifact_form()
+        elif self.selected_kind == "dependency":
+            self.populate_dependency_form()
+        else:
+            self.form_stack.setCurrentIndex(0)
+
+    def populate_task_form(self):
+        task = self.find_task(str(self.selected_id))
+        if not task:
+            self.form_stack.setCurrentIndex(0)
+            return
+        self.form_stack.setCurrentIndex(1)
+        self.task_id_edit.setText(str(task.get("id", "")))
+        self.task_name_edit.setText(str(task.get("name", "")))
+        status = str(task.get("status", STATUS_OPTIONS[0]))
+        self.task_status_combo.setCurrentText(status if status in STATUS_OPTIONS else STATUS_OPTIONS[0])
+        self.task_link_edit.setText(str(get_task_link(task)))
+        self.task_inputs_edit.setText(self.id_list_to_text(task.get("inputs")))
+        self.task_outputs_edit.setText(self.id_list_to_text(task.get("outputs")))
+        self.task_resources_edit.setText(self.id_list_to_text(task.get("resources")))
+        self.task_x_spin.setValue(float(task.get("x", 0)))
+        self.task_y_spin.setValue(float(task.get("y", 0)))
+
+    def populate_artifact_form(self):
+        artifact = self.find_artifact(str(self.selected_id))
+        if not artifact:
+            self.form_stack.setCurrentIndex(0)
+            return
+        self.form_stack.setCurrentIndex(2)
+        self.artifact_id_edit.setText(str(artifact.get("id", "")))
+        self.artifact_name_edit.setText(str(artifact.get("name", "")))
+        self.artifact_kind_combo.setCurrentText(str(artifact.get("kind", "artifact")))
+        self.artifact_type_combo.setCurrentText(str(artifact.get("type", "xlsx")))
+        self.artifact_link_edit.setText(str(get_artifact_link(artifact)))
+
+    def populate_dependency_form(self):
+        dep = self.find_dependency(int(self.selected_id))
+        if not dep:
+            self.form_stack.setCurrentIndex(0)
+            return
+        self.form_stack.setCurrentIndex(3)
+        self.dep_from_combo.setCurrentText(str(dep.get("from", "")))
+        self.dep_to_combo.setCurrentText(str(dep.get("to", "")))
+
+    def select_editor_item(self, kind: str, item):
+        if self._updating_editor or item is None:
+            return
+        self.selected_kind = kind
+        self.selected_id = item.data(Qt.UserRole)
+        if kind == "task":
+            self.project_tabs.setCurrentWidget(self.task_list)
+        elif kind == "artifact":
+            self.project_tabs.setCurrentWidget(self.artifact_list)
+        elif kind == "dependency":
+            self.project_tabs.setCurrentWidget(self.dependency_list)
+        self.refresh_editor()
+
+    def on_task_item_selected(self, current, previous):
+        self.select_editor_item("task", current)
+
+    def on_artifact_item_selected(self, current, previous):
+        self.select_editor_item("artifact", current)
+
+    def on_dependency_item_selected(self, current, previous):
+        self.select_editor_item("dependency", current)
+
+    def add_selected_tab_item(self):
+        current = self.project_tabs.currentWidget()
+        if current is self.task_list:
+            self.add_task()
+        elif current is self.artifact_list:
+            self.add_artifact()
+        else:
+            self.add_dependency()
+
+    def add_task(self):
+        task_id = self.next_id("T", self.tasks.keys())
+        task = {
+            "id": task_id,
+            "name": "New Task",
+            "status": STATUS_OPTIONS[0],
+            "link": "",
+            "inputs": [],
+            "outputs": [],
+            "resources": [],
+            "x": len(self.project.get("tasks", [])) * 40,
+            "y": len(self.project.get("tasks", [])) * 40,
+        }
+        self.project.setdefault("tasks", []).append(task)
+        self.selected_kind = "task"
+        self.selected_id = task_id
+        self.mark_editor_modified(rebuild_graph=True)
+
+    def add_artifact(self):
+        artifact_id = self.next_id("A", [artifact.get("id") for artifact in self.project.get("artifacts", [])])
+        artifact = {"id": artifact_id, "name": "New Artifact", "kind": "artifact", "type": "xlsx", "link": ""}
+        self.project.setdefault("artifacts", []).append(artifact)
+        self.selected_kind = "artifact"
+        self.selected_id = artifact_id
+        self.mark_editor_modified()
+
+    def add_dependency(self):
+        task_ids = [str(task.get("id")) for task in self.project.get("tasks", []) if task.get("id")]
+        if len(task_ids) < 2:
+            QMessageBox.information(self, "依存関係を追加できません", "依存関係にはタスクが2つ以上必要です")
+            return
+        dep = None
+        existing = {(item.get("from"), item.get("to")) for item in self.project.get("dependencies", [])}
+        for source in task_ids:
+            for target in task_ids:
+                if source == target or (source, target) in existing:
+                    continue
+                candidate = {"from": source, "to": target}
+                self.project.setdefault("dependencies", []).append(candidate)
+                if not self.has_cycle():
+                    dep = candidate
+                    break
+                self.project["dependencies"].pop()
+            if dep:
+                break
+        if not dep:
+            QMessageBox.information(self, "依存関係を追加できません", "追加できる依存関係の組み合わせがありません")
+            return
+        self.selected_kind = "dependency"
+        self.selected_id = len(self.project["dependencies"]) - 1
+        self.mark_editor_modified(rebuild_graph=True)
+
+    def delete_selected_item(self):
+        if self.selected_kind == "task":
+            self.delete_task(str(self.selected_id))
+        elif self.selected_kind == "artifact":
+            self.delete_artifact(str(self.selected_id))
+        elif self.selected_kind == "dependency":
+            dependencies = self.project.get("dependencies", [])
+            index = int(self.selected_id)
+            if 0 <= index < len(dependencies):
+                dependencies.pop(index)
+                self.selected_kind = None
+                self.selected_id = None
+                self.mark_editor_modified(rebuild_graph=True)
+
+    def delete_task(self, task_id: str):
+        self.project["tasks"] = [task for task in self.project.get("tasks", []) if str(task.get("id")) != task_id]
+        self.project["dependencies"] = [
+            dep for dep in self.project.get("dependencies", [])
+            if dep.get("from") != task_id and dep.get("to") != task_id
+        ]
+        self.selected_kind = None
+        self.selected_id = None
+        self.mark_editor_modified(rebuild_graph=True)
+
+    def delete_artifact(self, artifact_id: str):
+        self.project["artifacts"] = [
+            artifact for artifact in self.project.get("artifacts", [])
+            if str(artifact.get("id")) != artifact_id
+        ]
+        for task in self.project.get("tasks", []):
+            for field in ("inputs", "outputs", "resources"):
+                task[field] = [item_id for item_id in normalize_id_list(task.get(field)) if item_id != artifact_id]
+        self.selected_kind = None
+        self.selected_id = None
+        self.mark_editor_modified(rebuild_graph=True)
+
+    def apply_task_form(self):
+        if self._updating_editor or self.selected_kind != "task":
+            return
+
+        task = self.find_task(str(self.selected_id))
+        if not task:
+            return
+
+        old_id = str(task.get("id", ""))
+        new_id = self.task_id_edit.text().strip()
+        if not new_id:
+            QMessageBox.warning(self, "IDが空です", "タスクIDを入力してください")
+            self.refresh_editor()
+            return
+        if new_id != old_id and self.find_task(new_id):
+            QMessageBox.warning(self, "IDが重複しています", f"{new_id} はすでに使われています")
+            self.refresh_editor()
+            return
+
+        if new_id != old_id:
+            for dep in self.project.get("dependencies", []):
+                if dep.get("from") == old_id:
+                    dep["from"] = new_id
+                if dep.get("to") == old_id:
+                    dep["to"] = new_id
+            self.selected_id = new_id
+
+        task["id"] = new_id
+        task["name"] = self.task_name_edit.text().strip()
+        task["status"] = self.task_status_combo.currentText()
+        task["link"] = self.task_link_edit.text().strip()
+        task["inputs"] = self.text_to_id_list(self.task_inputs_edit.text())
+        task["outputs"] = self.text_to_id_list(self.task_outputs_edit.text())
+        task["resources"] = self.text_to_id_list(self.task_resources_edit.text())
+        task["x"] = self.task_x_spin.value()
+        task["y"] = self.task_y_spin.value()
+        self.mark_editor_modified(rebuild_graph=True)
+
+    def apply_artifact_form(self):
+        if self._updating_editor or self.selected_kind != "artifact":
+            return
+
+        artifact = self.find_artifact(str(self.selected_id))
+        if not artifact:
+            return
+
+        old_id = str(artifact.get("id", ""))
+        new_id = self.artifact_id_edit.text().strip()
+        if not new_id:
+            QMessageBox.warning(self, "IDが空です", "成果物IDを入力してください")
+            self.refresh_editor()
+            return
+        if new_id != old_id and self.find_artifact(new_id):
+            QMessageBox.warning(self, "IDが重複しています", f"{new_id} はすでに使われています")
+            self.refresh_editor()
+            return
+
+        if new_id != old_id:
+            for task in self.project.get("tasks", []):
+                for field in ("inputs", "outputs", "resources"):
+                    task[field] = [new_id if item_id == old_id else item_id for item_id in normalize_id_list(task.get(field))]
+            self.selected_id = new_id
+
+        artifact["id"] = new_id
+        artifact["name"] = self.artifact_name_edit.text().strip()
+        artifact["kind"] = self.artifact_kind_combo.currentText()
+        artifact["type"] = self.artifact_type_combo.currentText().strip()
+        artifact["link"] = self.artifact_link_edit.text().strip()
+        self.mark_editor_modified(rebuild_graph=True)
+
+    def apply_dependency_form(self):
+        if self._updating_editor or self.selected_kind != "dependency":
+            return
+
+        dep = self.find_dependency(int(self.selected_id))
+        if not dep:
+            return
+
+        source = self.dep_from_combo.currentText()
+        target = self.dep_to_combo.currentText()
+        if not source or not target:
+            return
+        if source == target:
+            QMessageBox.warning(self, "依存関係が不正です", "同じタスク同士は接続できません")
+            self.refresh_editor()
+            return
+
+        old_from = dep.get("from")
+        old_to = dep.get("to")
+        dep["from"] = source
+        dep["to"] = target
+        if self.has_duplicate_dependency() or self.has_cycle():
+            dep["from"] = old_from
+            dep["to"] = old_to
+            QMessageBox.warning(self, "依存関係が不正です", "重複または循環する依存関係は保存できません")
+            self.refresh_editor()
+            return
+
+        self.mark_editor_modified(rebuild_graph=True)
+
+    def has_duplicate_dependency(self) -> bool:
+        seen = set()
+        for dep in self.project.get("dependencies", []):
+            pair = (dep.get("from"), dep.get("to"))
+            if pair in seen:
+                return True
+            seen.add(pair)
+        return False
+
+    def has_cycle(self) -> bool:
+        task_ids = [str(task.get("id")) for task in self.project.get("tasks", []) if task.get("id")]
+        successors = {task_id: [] for task_id in task_ids}
+        indegree = {task_id: 0 for task_id in task_ids}
+        for dep in self.project.get("dependencies", []):
+            source = dep.get("from")
+            target = dep.get("to")
+            if source in successors and target in indegree:
+                successors[source].append(target)
+                indegree[target] += 1
+
+        queue = deque([task_id for task_id, degree in indegree.items() if degree == 0])
+        processed = 0
+        while queue:
+            current = queue.popleft()
+            processed += 1
+            for target in successors[current]:
+                indegree[target] -= 1
+                if indegree[target] == 0:
+                    queue.append(target)
+        return processed != len(task_ids)
+
+    def new_project(self):
+        self.current_file = None
+        self.selected_kind = None
+        self.selected_id = None
+        self.project = {"tasks": [], "artifacts": [], "dependencies": []}
+        self.refresh_graph_view()
+        self.refresh_editor()
+        self.set_modified(False)
+        self.statusBar().showMessage("新しいプロジェクトを作成しました", 3000)
+
+    def refresh_graph_view(self):
+        self._layout_in_progress = True
+        try:
+            self.clear_graph()
+            self.tasks = {
+                str(task.get("id")): task
+                for task in self.project.get("tasks", [])
+                if task.get("id")
+            }
+            self.artifacts = {
+                str(artifact.get("id")): artifact
+                for artifact in self.project.get("artifacts", [])
+                if artifact.get("id")
+            }
+
+            for task in self.project.get("tasks", []):
+                if not task.get("id"):
+                    continue
+                node = TaskNodeItem(task, self)
+                self.scene.addItem(node)
+                self.nodes[node.task_id] = node
+
+            for dep in self.project.get("dependencies", []):
+                source = self.nodes.get(dep.get("from"))
+                target = self.nodes.get(dep.get("to"))
+                if source and target:
+                    edge = EdgeItem(source, target)
+                    self.scene.addItem(edge)
+                    source.add_edge(edge)
+                    target.add_edge(edge)
+                    self.edges.append(edge)
+        finally:
+            self._layout_in_progress = False
+
+        self.fit_all()
 
     def clear_graph(self):
         self.scene.clear()
@@ -437,6 +1064,9 @@ class MainWindow(QMainWindow):
             self.expanded_node.set_expanded(False)
         self.expanded_node = node
         node.set_expanded(True)
+        self.selected_kind = "task"
+        self.selected_id = node.task_id
+        self.refresh_editor()
         if self.resolve_node_overlaps():
             self.statusBar().showMessage("展開したタスクに合わせて重なりを避けました", 3000)
 
@@ -528,6 +1158,7 @@ class MainWindow(QMainWindow):
             self._layout_in_progress = False
 
         self.fit_all()
+        self.refresh_editor()
         self.set_modified(False)
 
     def open_json(self):
@@ -557,6 +1188,10 @@ class MainWindow(QMainWindow):
             return
 
         self.sync_positions()
+        validation_errors = self.validate_project()
+        if validation_errors:
+            QMessageBox.warning(self, "保存できません", "\n".join(validation_errors))
+            return
         try:
             with open(self.current_file, "w", encoding="utf-8") as f:
                 json.dump(self.project, f, ensure_ascii=False, indent=2)
@@ -566,6 +1201,38 @@ class MainWindow(QMainWindow):
 
         self.set_modified(False)
         self.statusBar().showMessage(f"保存しました: {self.current_file}", 3000)
+        self.update_json_preview()
+
+    def validate_project(self) -> list[str]:
+        errors = []
+        task_ids = {str(task.get("id")) for task in self.project.get("tasks", []) if task.get("id")}
+        artifact_ids = {str(artifact.get("id")) for artifact in self.project.get("artifacts", []) if artifact.get("id")}
+
+        if any(not task.get("id") for task in self.project.get("tasks", [])):
+            errors.append("IDが空のタスクがあります")
+        if any(not artifact.get("id") for artifact in self.project.get("artifacts", [])):
+            errors.append("IDが空の成果物があります")
+        if len(task_ids) != len([task for task in self.project.get("tasks", []) if task.get("id")]):
+            errors.append("タスクIDが重複しています")
+        if len(artifact_ids) != len([artifact for artifact in self.project.get("artifacts", []) if artifact.get("id")]):
+            errors.append("成果物IDが重複しています")
+
+        for dep in self.project.get("dependencies", []):
+            if dep.get("from") not in task_ids or dep.get("to") not in task_ids:
+                errors.append("未定義のタスクを使っている依存関係があります")
+                break
+        if self.has_duplicate_dependency():
+            errors.append("依存関係が重複しています")
+        if self.has_cycle():
+            errors.append("依存関係が循環しています")
+
+        for task in self.project.get("tasks", []):
+            for field in ("inputs", "outputs", "resources"):
+                unknown = [item_id for item_id in normalize_id_list(task.get(field)) if item_id not in artifact_ids]
+                if unknown:
+                    errors.append(f"{task.get('id')} の {field} に未定義の成果物があります: {', '.join(unknown)}")
+
+        return errors
 
     def save_json_as(self):
         filename, _ = QFileDialog.getSaveFileName(
