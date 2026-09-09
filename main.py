@@ -300,7 +300,7 @@ class TaskNodeItem(QGraphicsRectItem):
         input_artifacts = self.app_window.get_task_artifacts(self.task, "inputs")
         input_menu.setEnabled(bool(input_artifacts))
         for artifact in input_artifacts:
-            action = input_menu.addAction(self.app_window.artifact_menu_label(artifact))
+            action = input_menu.addAction(artifact_label(artifact))
             action.setEnabled(bool(get_artifact_link(artifact)))
             artifact_actions[action] = artifact
 
@@ -308,7 +308,7 @@ class TaskNodeItem(QGraphicsRectItem):
         output_artifacts = self.app_window.get_task_artifacts(self.task, "outputs")
         output_menu.setEnabled(bool(output_artifacts))
         for artifact in output_artifacts:
-            action = output_menu.addAction(self.app_window.artifact_menu_label(artifact))
+            action = output_menu.addAction(artifact_label(artifact))
             action.setEnabled(bool(get_artifact_link(artifact)))
             artifact_actions[action] = artifact
 
@@ -316,7 +316,7 @@ class TaskNodeItem(QGraphicsRectItem):
         resource_artifacts = self.app_window.get_task_artifacts(self.task, "resources")
         resource_menu.setEnabled(bool(resource_artifacts))
         for artifact in resource_artifacts:
-            action = resource_menu.addAction(self.app_window.artifact_menu_label(artifact))
+            action = resource_menu.addAction(artifact_label(artifact))
             action.setEnabled(bool(get_artifact_link(artifact)))
             artifact_actions[action] = artifact
 
@@ -485,48 +485,6 @@ class MainWindow(QMainWindow):
             self.set_modified(True)
 
         return changed
-
-    def task_label(self, task_id: str) -> str:
-        task = self.tasks.get(task_id)
-        if not task:
-            return task_id
-        name = task.get("name")
-        if name:
-            return f"{task_id} {name}"
-        return task_id
-
-    def infer_artifact_producer(self, artifact_id: str) -> str:
-        for task in self.project.get("tasks", []):
-            if artifact_id in normalize_id_list(task.get("outputs")):
-                return str(task.get("id", ""))
-        return ""
-
-    def infer_artifact_consumers(self, artifact_id: str) -> list[str]:
-        consumers = []
-        for task in self.project.get("tasks", []):
-            task_id = task.get("id")
-            task_inputs = normalize_id_list(task.get("inputs"))
-            task_resources = normalize_id_list(task.get("resources"))
-            if task_id and artifact_id in task_inputs + task_resources:
-                consumers.append(str(task_id))
-        return consumers
-
-    def artifact_menu_label(self, artifact: dict) -> str:
-        label = artifact_label(artifact)
-        artifact_id = str(artifact.get("id", ""))
-        producer = artifact.get("producer") or self.infer_artifact_producer(artifact_id)
-        consumers = normalize_id_list(artifact.get("consumers")) or self.infer_artifact_consumers(artifact_id)
-
-        details = []
-        if producer:
-            details.append(f"作成:{self.task_label(str(producer))}")
-        if consumers:
-            consumer_labels = ", ".join(self.task_label(task_id) for task_id in consumers)
-            details.append(f"使用:{consumer_labels}")
-
-        if details:
-            return f"{label} / {' / '.join(details)}"
-        return label
 
     def get_task_artifacts(self, task: dict, field: str) -> list[dict]:
         artifacts = []
