@@ -414,46 +414,46 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("JSONを開くか、サンプルを読み込んでください")
 
     def build_toolbar(self):
-        toolbar = QToolBar("Main")
-        self.addToolBar(toolbar)
+        self.toolbar = QToolBar("Main")
+        self.addToolBar(self.toolbar)
 
         new_action = QAction("新規", self)
         new_action.triggered.connect(self.new_project)
-        toolbar.addAction(new_action)
+        self.toolbar.addAction(new_action)
 
         open_action = QAction("JSONを開く", self)
         open_action.triggered.connect(self.open_json)
-        toolbar.addAction(open_action)
+        self.toolbar.addAction(open_action)
 
         save_action = QAction("保存", self)
         save_action.triggered.connect(self.save_json)
-        toolbar.addAction(save_action)
+        self.toolbar.addAction(save_action)
 
         save_as_action = QAction("名前を付けて保存", self)
         save_as_action.triggered.connect(self.save_json_as)
-        toolbar.addAction(save_as_action)
+        self.toolbar.addAction(save_as_action)
 
-        toolbar.addSeparator()
+        self.toolbar.addSeparator()
 
         auto_action = QAction("完全自動配置", self)
         auto_action.setToolTip("依存関係から列と行の両方を自動配置します")
         auto_action.triggered.connect(self.auto_layout_full)
-        toolbar.addAction(auto_action)
+        self.toolbar.addAction(auto_action)
 
         column_action = QAction("列だけ整列", self)
         column_action.setToolTip("依存関係からX座標だけを自動配置し、Y座標は維持します")
         column_action.triggered.connect(self.auto_layout_columns_only)
-        toolbar.addAction(column_action)
+        self.toolbar.addAction(column_action)
 
-        toolbar.addSeparator()
+        self.toolbar.addSeparator()
 
         fit_action = QAction("全体表示", self)
         fit_action.triggered.connect(self.fit_all)
-        toolbar.addAction(fit_action)
+        self.toolbar.addAction(fit_action)
 
     def build_editor_ui(self):
-        project_dock = QDockWidget("Project", self)
-        project_dock.setObjectName("projectDock")
+        self.project_dock = QDockWidget("Project", self)
+        self.project_dock.setObjectName("projectDock")
         project_widget = QWidget()
         project_layout = QVBoxLayout(project_widget)
 
@@ -478,22 +478,26 @@ class MainWindow(QMainWindow):
         button_row.addWidget(delete_button)
         project_layout.addLayout(button_row)
 
-        project_dock.setWidget(project_widget)
-        self.addDockWidget(Qt.LeftDockWidgetArea, project_dock)
+        self.project_dock.setWidget(project_widget)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.project_dock)
 
         self.task_list.currentItemChanged.connect(self.on_task_item_selected)
         self.artifact_list.currentItemChanged.connect(self.on_artifact_item_selected)
         self.dependency_list.currentItemChanged.connect(self.on_dependency_item_selected)
 
-        editor_dock = QDockWidget("Editor", self)
-        editor_dock.setObjectName("editorDock")
+        self.editor_dock = QDockWidget("Editor", self)
+        self.editor_dock.setObjectName("editorDock")
         editor_tabs = QTabWidget()
         editor_tabs.addTab(self.build_form_stack(), "Edit")
         self.json_preview = QPlainTextEdit()
         self.json_preview.setReadOnly(True)
         editor_tabs.addTab(self.json_preview, "JSON")
-        editor_dock.setWidget(editor_tabs)
-        self.addDockWidget(Qt.RightDockWidgetArea, editor_dock)
+        self.editor_dock.setWidget(editor_tabs)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.editor_dock)
+
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.project_dock.toggleViewAction())
+        self.toolbar.addAction(self.editor_dock.toggleViewAction())
 
         self.refresh_editor()
 
