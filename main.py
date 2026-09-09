@@ -359,6 +359,7 @@ class DependencyView(QGraphicsView):
 class MainWindow(QMainWindow):
     COLUMN_SPACING = 300
     ROW_SPACING = 130
+    NODE_VERTICAL_GAP = 24
 
     def __init__(self):
         super().__init__()
@@ -436,6 +437,54 @@ class MainWindow(QMainWindow):
             self.expanded_node.set_expanded(False)
         self.expanded_node = node
         node.set_expanded(True)
+        if self.resolve_node_overlaps():
+            self.statusBar().showMessage("展開したタスクに合わせて重なりを避けました", 3000)
+
+    def resolve_node_overlaps(self) -> bool:
+        """Push lower nodes down when an expanded node would cover them."""
+        def overlaps_horizontally(a: QRectF, b: QRectF) -> bool:
+            return a.left() < b.right() and a.right() > b.left()
+
+        changed = False
+        placed_rects = []
+        nodes = sorted(
+            self.nodes.values(),
+            key=lambda item: (
+                item.sceneBoundingRect().top(),
+                item.sceneBoundingRect().left(),
+                str(item.task_id),
+            ),
+        )
+
+        self._layout_in_progress = True
+        try:
+            for node in nodes:
+                rect = node.sceneBoundingRect()
+                shift_y = 0.0
+                for placed_rect in placed_rects:
+                    if not overlaps_horizontally(rect.translated(0, shift_y), placed_rect):
+                        continue
+                    min_top = placed_rect.bottom() + self.NODE_VERTICAL_GAP
+                    if rect.top() + shift_y < min_top and rect.bottom() + shift_y > placed_rect.top():
+                        shift_y = max(shift_y, min_top - rect.top())
+
+                if shift_y:
+                    node.setPos(node.pos().x(), node.pos().y() + shift_y)
+                    node.task["x"] = node.pos().x()
+                    node.task["y"] = node.pos().y()
+                    changed = True
+                    rect = node.sceneBoundingRect()
+
+                placed_rects.append(rect)
+        finally:
+            self._layout_in_progress = False
+
+        if changed:
+            for edge in self.edges:
+                edge.update_path()
+            self.set_modified(True)
+
+        return changed
 
     def task_label(self, task_id: str) -> str:
         task = self.tasks.get(task_id)
