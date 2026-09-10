@@ -1,13 +1,13 @@
 {
   "project_name": "工程依存関係サンプル",
   "tasks": [
-    {"id":"T01","name":"仕様確定","status":"完了","link":"https://google.com","outputs":["A01"],"resources":["M01"],"x":60,"y":250},
-    {"id":"T02","name":"RTL設計","status":"進行中","link":"C:\\Project\\hoge.xlsx","inputs":["A01"],"outputs":["A02"],"resources":["M02","R01"],"x":350,"y":40},
-    {"id":"T03","name":"検証仕様作成","status":"完了","link":"C:\\Project\\verification","inputs":["A01"],"outputs":["A03"],"resources":["M03"],"x":350,"y":350},
-    {"id":"T04","name":"単体検証","status":"未着手","link":"C:\\Project\\unit_test","inputs":["A02","A03"],"outputs":["A04"],"resources":["M04","T01_DOC"],"x":670,"y":180},
-    {"id":"T05","name":"結合検証","status":"未着手","link":"C:\\Project\\integration","inputs":["A04"],"outputs":["A05"],"resources":["M04"],"x":970,"y":100},
-    {"id":"T06","name":"レビュー","status":"未着手","link":"C:\\Project\\review","inputs":["A02"],"outputs":["A06"],"resources":["R01"],"x":690,"y":430},
-    {"id":"T07","name":"リリース判定","status":"未着手","link":"C:\\Project\\release","inputs":["A04","A06"],"outputs":["A07"],"resources":["M05"],"x":1010,"y":400}
+    {"id":"T01","name":"仕様確定","status":"完了","group":"企画","link":"https://google.com","outputs":["A01"],"resources":["M01"],"x":60,"y":250},
+    {"id":"T02","name":"RTL設計","status":"進行中","group":"設計","link":"C:\\Project\\hoge.xlsx","inputs":["A01"],"outputs":["A02"],"resources":["M02","R01"],"x":350,"y":40},
+    {"id":"T03","name":"検証仕様作成","status":"完了","group":"検証","link":"C:\\Project\\verification","inputs":["A01"],"outputs":["A03"],"resources":["M03"],"x":350,"y":350},
+    {"id":"T04","name":"単体検証","status":"未着手","group":"検証","link":"C:\\Project\\unit_test","inputs":["A02","A03"],"outputs":["A04"],"resources":["M04","T01_DOC"],"x":670,"y":180},
+    {"id":"T05","name":"結合検証","status":"未着手","group":"検証","link":"C:\\Project\\integration","inputs":["A04"],"outputs":["A05"],"resources":["M04"],"x":970,"y":100},
+    {"id":"T06","name":"レビュー","status":"未着手","group":"設計","link":"C:\\Project\\review","inputs":["A02"],"outputs":["A06"],"resources":["R01"],"x":690,"y":430},
+    {"id":"T07","name":"リリース判定","status":"未着手","group":"リリース","link":"C:\\Project\\release","inputs":["A04","A06"],"outputs":["A07"],"resources":["M05"],"x":1010,"y":400}
   ],
   "artifacts": [
     {"id":"A01","name":"仕様書","kind":"artifact","type":"xlsx","link":"C:\\Project\\spec\\仕様書.xlsx"},

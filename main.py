@@ -51,6 +51,7 @@ STATUS_COLORS = {
 STATUS_OPTIONS = list(STATUS_COLORS.keys())
 ARTIFACT_KIND_OPTIONS = ["artifact", "manual", "reference", "template"]
 ARTIFACT_TYPE_OPTIONS = ["xlsx", "pdf", "folder", "url", "docx", "txt", "other"]
+GROUP_COLORS = ["#E0F2FE", "#DCFCE7", "#FEF3C7", "#FCE7F3", "#EDE9FE", "#CCFBF1", "#FFE4E6"]
 
 
 def open_link(link: str) -> None:
@@ -102,6 +103,10 @@ def artifact_label(artifact: dict) -> str:
     if artifact_type:
         label = f"{label} ({artifact_type})"
     return label
+
+
+def task_group(task: dict) -> str:
+    return str(task.get("group", "")).strip()
 
 
 class EdgeItem(QGraphicsPathItem):
@@ -313,6 +318,7 @@ class TaskNodeItem(QGraphicsRectItem):
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
         if not self.app_window._layout_in_progress:
+            self.app_window.update_group_items()
             self.app_window.update_json_preview()
 
     def contextMenuEvent(self, event):
@@ -398,6 +404,7 @@ class MainWindow(QMainWindow):
 
         self.nodes = {}
         self.edges = []
+        self.group_items = []
         self.tasks = {}
         self.artifacts = {}
         self.project = {"tasks": [], "artifacts": [], "dependencies": []}
@@ -518,6 +525,8 @@ class MainWindow(QMainWindow):
         self.task_name_edit = QLineEdit()
         self.task_status_combo = QComboBox()
         self.task_status_combo.addItems(STATUS_OPTIONS)
+        self.task_group_combo = QComboBox()
+        self.task_group_combo.setEditable(True)
         self.task_link_edit = QLineEdit()
         self.task_inputs_edit = QLineEdit()
         self.task_outputs_edit = QLineEdit()
@@ -528,6 +537,7 @@ class MainWindow(QMainWindow):
         form.addRow("ID", self.task_id_edit)
         form.addRow("Name", self.task_name_edit)
         form.addRow("Status", self.task_status_combo)
+        form.addRow("Group", self.task_group_combo)
         form.addRow("Link", self.with_link_buttons(self.task_link_edit))
         form.addRow("Inputs", self.task_inputs_edit)
         form.addRow("Outputs", self.task_outputs_edit)
@@ -545,6 +555,7 @@ class MainWindow(QMainWindow):
         ):
             widget_to_watch.editingFinished.connect(self.apply_task_form)
         self.task_status_combo.currentTextChanged.connect(self.apply_task_form)
+        self.task_group_combo.currentTextChanged.connect(self.apply_task_form)
         self.task_x_spin.valueChanged.connect(self.apply_task_form)
         self.task_y_spin.valueChanged.connect(self.apply_task_form)
         return widget
@@ -635,6 +646,9 @@ class MainWindow(QMainWindow):
     def text_to_id_list(self, text: str) -> list[str]:
         return [part.strip() for part in text.split(",") if part.strip()]
 
+    def group_names(self) -> list[str]:
+        return sorted({task_group(task) for task in self.project.get("tasks", []) if task_group(task)})
+
     def next_id(self, prefix: str, existing_ids) -> str:
         used = {str(item_id) for item_id in existing_ids}
         index = 1
@@ -672,9 +686,15 @@ class MainWindow(QMainWindow):
         self._updating_editor = True
         try:
             self.task_list.clear()
-            for task in self.project.get("tasks", []):
+            sorted_tasks = sorted(
+                self.project.get("tasks", []),
+                key=lambda task: (task_group(task) or "~~~", str(task.get("id", ""))),
+            )
+            for task in sorted_tasks:
                 task_id = str(task.get("id", ""))
-                item = QListWidgetItem(f"{task_id}  {task.get('name', '')}")
+                group = task_group(task)
+                label = f"{group} / {task_id}  {task.get('name', '')}" if group else f"未分類 / {task_id}  {task.get('name', '')}"
+                item = QListWidgetItem(label)
                 item.setData(Qt.UserRole, task_id)
                 self.task_list.addItem(item)
                 if current_kind == "task" and task_id == current_id:
@@ -702,6 +722,11 @@ class MainWindow(QMainWindow):
             self.dep_to_combo.clear()
             self.dep_from_combo.addItems(task_ids)
             self.dep_to_combo.addItems(task_ids)
+            current_group = self.task_group_combo.currentText()
+            self.task_group_combo.clear()
+            self.task_group_combo.addItem("")
+            self.task_group_combo.addItems(self.group_names())
+            self.task_group_combo.setCurrentText(current_group)
             self.populate_selected_form()
             self.update_json_preview()
         finally:
@@ -731,6 +756,7 @@ class MainWindow(QMainWindow):
         self.task_name_edit.setText(str(task.get("name", "")))
         status = str(task.get("status", STATUS_OPTIONS[0]))
         self.task_status_combo.setCurrentText(status if status in STATUS_OPTIONS else STATUS_OPTIONS[0])
+        self.task_group_combo.setCurrentText(task_group(task))
         self.task_link_edit.setText(str(get_task_link(task)))
         self.task_inputs_edit.setText(self.id_list_to_text(task.get("inputs")))
         self.task_outputs_edit.setText(self.id_list_to_text(task.get("outputs")))
@@ -796,6 +822,7 @@ class MainWindow(QMainWindow):
             "id": task_id,
             "name": "New Task",
             "status": STATUS_OPTIONS[0],
+            "group": "",
             "link": "",
             "inputs": [],
             "outputs": [],
@@ -908,6 +935,11 @@ class MainWindow(QMainWindow):
         task["id"] = new_id
         task["name"] = self.task_name_edit.text().strip()
         task["status"] = self.task_status_combo.currentText()
+        group = self.task_group_combo.currentText().strip()
+        if group:
+            task["group"] = group
+        else:
+            task.pop("group", None)
         task["link"] = self.task_link_edit.text().strip()
         task["inputs"] = self.text_to_id_list(self.task_inputs_edit.text())
         task["outputs"] = self.text_to_id_list(self.task_outputs_edit.text())
@@ -1053,12 +1085,61 @@ class MainWindow(QMainWindow):
         finally:
             self._layout_in_progress = False
 
+        self.update_group_items()
         self.fit_all()
+
+    def clear_group_items(self):
+        for item in self.group_items:
+            if item.scene() is not None:
+                item.scene().removeItem(item)
+        self.group_items = []
+
+    def update_group_items(self):
+        if not hasattr(self, "scene"):
+            return
+
+        self.clear_group_items()
+        grouped_nodes = defaultdict(list)
+        for node in self.nodes.values():
+            group = task_group(node.task)
+            if group:
+                grouped_nodes[group].append(node)
+
+        for index, group in enumerate(sorted(grouped_nodes)):
+            nodes = grouped_nodes[group]
+            if not nodes:
+                continue
+
+            rect = nodes[0].sceneBoundingRect()
+            for node in nodes[1:]:
+                rect = rect.united(node.sceneBoundingRect())
+
+            rect = rect.adjusted(-28, -34, 28, 28)
+            base_color = QColor(GROUP_COLORS[index % len(GROUP_COLORS)])
+            fill_color = QColor(base_color)
+            fill_color.setAlpha(70)
+            pen_color = QColor(base_color)
+            pen_color.setAlpha(210)
+
+            group_rect = QGraphicsRectItem(rect)
+            group_rect.setZValue(-3)
+            group_rect.setBrush(QBrush(fill_color))
+            group_rect.setPen(QPen(pen_color, 1.5, Qt.DashLine))
+            self.scene.addItem(group_rect)
+            self.group_items.append(group_rect)
+
+            label = QGraphicsTextItem(group)
+            label.setDefaultTextColor(QColor("#374151"))
+            label.setZValue(-2)
+            label.setPos(rect.left() + 8, rect.top() + 4)
+            self.scene.addItem(label)
+            self.group_items.append(label)
 
     def clear_graph(self):
         self.scene.clear()
         self.nodes.clear()
         self.edges.clear()
+        self.group_items.clear()
         self.tasks.clear()
         self.artifacts.clear()
         self.expanded_node = None
@@ -1116,6 +1197,7 @@ class MainWindow(QMainWindow):
         if changed:
             for edge in self.edges:
                 edge.update_path()
+            self.update_group_items()
             self.set_modified(True)
 
         return changed
@@ -1161,6 +1243,7 @@ class MainWindow(QMainWindow):
         finally:
             self._layout_in_progress = False
 
+        self.update_group_items()
         self.fit_all()
         self.refresh_editor()
         self.set_modified(False)
@@ -1398,6 +1481,7 @@ class MainWindow(QMainWindow):
 
             for edge in self.edges:
                 edge.update_path()
+            self.update_group_items()
         finally:
             self._layout_in_progress = False
 
@@ -1426,6 +1510,7 @@ class MainWindow(QMainWindow):
 
             for edge in self.edges:
                 edge.update_path()
+            self.update_group_items()
         finally:
             self._layout_in_progress = False
 
