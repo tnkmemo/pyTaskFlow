@@ -50,7 +50,6 @@ STATUS_COLORS = {
 
 STATUS_OPTIONS = list(STATUS_COLORS.keys())
 ARTIFACT_KIND_OPTIONS = ["artifact", "manual", "reference", "template"]
-ARTIFACT_TYPE_OPTIONS = ["xlsx", "pdf", "folder", "url", "docx", "txt", "other"]
 GROUP_COLORS = ["#E0F2FE", "#DCFCE7", "#FEF3C7", "#FCE7F3", "#EDE9FE", "#CCFBF1", "#FFE4E6"]
 
 
@@ -95,14 +94,9 @@ def normalize_id_list(value) -> list[str]:
 def artifact_label(artifact: dict) -> str:
     artifact_id = artifact.get("id", "")
     name = artifact.get("name") or artifact_id or "Unnamed"
-    artifact_type = artifact.get("type", "")
     if artifact_id and artifact_id != name:
-        label = f"{artifact_id}  {name}"
-    else:
-        label = str(name)
-    if artifact_type:
-        label = f"{label} ({artifact_type})"
-    return label
+        return f"{artifact_id}  {name}"
+    return str(name)
 
 
 def task_group(task: dict) -> str:
@@ -167,13 +161,13 @@ class ResourceTextItem(QGraphicsTextItem):
         if get_artifact_link(artifact):
             self.setCursor(Qt.PointingHandCursor)
 
-    def mouseDoubleClickEvent(self, event):
+    def mousePressEvent(self, event):
         link = get_artifact_link(self.artifact)
-        if link:
+        if event.button() == Qt.LeftButton and link:
             open_link(link)
             event.accept()
             return
-        super().mouseDoubleClickEvent(event)
+        super().mousePressEvent(event)
 
 
 class TaskNodeItem(QGraphicsRectItem):
@@ -203,16 +197,19 @@ class TaskNodeItem(QGraphicsRectItem):
         self.title_item.setDefaultTextColor(QColor("#111827"))
         self.title_item.setTextWidth(self.WIDTH - 20)
         self.title_item.setPos(10, 8)
+        self.title_item.setAcceptedMouseButtons(Qt.NoButton)
 
         self.subtitle_item = QGraphicsTextItem(self)
         self.subtitle_item.setDefaultTextColor(QColor("#4B5563"))
         self.subtitle_item.setTextWidth(self.WIDTH - 20)
         self.subtitle_item.setPos(10, 34)
+        self.subtitle_item.setAcceptedMouseButtons(Qt.NoButton)
 
         self.artifact_item = QGraphicsTextItem(self)
         self.artifact_item.setDefaultTextColor(QColor("#374151"))
         self.artifact_item.setTextWidth(self.WIDTH - 20)
         self.artifact_item.setPos(10, 60)
+        self.artifact_item.setAcceptedMouseButtons(Qt.NoButton)
 
         self.refresh_text()
         self.setPos(float(task.get("x", 0)), float(task.get("y", 0)))
@@ -263,6 +260,7 @@ class TaskNodeItem(QGraphicsRectItem):
             item.setDefaultTextColor(QColor("#6B7280"))
             item.setTextWidth(self.WIDTH - 22)
             item.setPos(10, y)
+            item.setAcceptedMouseButtons(Qt.NoButton)
             self.resource_items.append(item)
             y += self.RESOURCE_LINE_HEIGHT
         else:
@@ -271,6 +269,7 @@ class TaskNodeItem(QGraphicsRectItem):
                 header.setDefaultTextColor(QColor("#111827"))
                 header.setTextWidth(self.WIDTH - 22)
                 header.setPos(10, y)
+                header.setAcceptedMouseButtons(Qt.NoButton)
                 self.resource_items.append(header)
                 y += self.RESOURCE_SECTION_HEIGHT
 
@@ -306,13 +305,14 @@ class TaskNodeItem(QGraphicsRectItem):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self.app_window.expand_task_node(self)
+            self.app_window.select_task_node(self)
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
-        link = get_task_link(self.task)
-        if link:
-            open_link(link)
+        if event.button() == Qt.LeftButton:
+            self.app_window.toggle_task_node(self)
+            event.accept()
+            return
         super().mouseDoubleClickEvent(event)
 
     def mouseReleaseEvent(self, event):
@@ -567,22 +567,17 @@ class MainWindow(QMainWindow):
         self.artifact_name_edit = QLineEdit()
         self.artifact_kind_combo = QComboBox()
         self.artifact_kind_combo.addItems(ARTIFACT_KIND_OPTIONS)
-        self.artifact_type_combo = QComboBox()
-        self.artifact_type_combo.setEditable(True)
-        self.artifact_type_combo.addItems(ARTIFACT_TYPE_OPTIONS)
         self.artifact_link_edit = QLineEdit()
 
         form.addRow("ID", self.artifact_id_edit)
         form.addRow("Name", self.artifact_name_edit)
         form.addRow("Kind", self.artifact_kind_combo)
-        form.addRow("Type", self.artifact_type_combo)
         form.addRow("Link", self.with_link_buttons(self.artifact_link_edit))
 
         self.artifact_id_edit.editingFinished.connect(self.apply_artifact_form)
         self.artifact_name_edit.editingFinished.connect(self.apply_artifact_form)
         self.artifact_link_edit.editingFinished.connect(self.apply_artifact_form)
         self.artifact_kind_combo.currentTextChanged.connect(self.apply_artifact_form)
-        self.artifact_type_combo.currentTextChanged.connect(self.apply_artifact_form)
         return widget
 
     def build_dependency_form(self):
@@ -773,7 +768,6 @@ class MainWindow(QMainWindow):
         self.artifact_id_edit.setText(str(artifact.get("id", "")))
         self.artifact_name_edit.setText(str(artifact.get("name", "")))
         self.artifact_kind_combo.setCurrentText(str(artifact.get("kind", "artifact")))
-        self.artifact_type_combo.setCurrentText(str(artifact.get("type", "xlsx")))
         self.artifact_link_edit.setText(str(get_artifact_link(artifact)))
 
     def populate_dependency_form(self):
@@ -837,7 +831,7 @@ class MainWindow(QMainWindow):
 
     def add_artifact(self):
         artifact_id = self.next_id("A", [artifact.get("id") for artifact in self.project.get("artifacts", [])])
-        artifact = {"id": artifact_id, "name": "New Artifact", "kind": "artifact", "type": "xlsx", "link": ""}
+        artifact = {"id": artifact_id, "name": "New Artifact", "kind": "artifact", "link": ""}
         self.project.setdefault("artifacts", []).append(artifact)
         self.selected_kind = "artifact"
         self.selected_id = artifact_id
@@ -976,7 +970,6 @@ class MainWindow(QMainWindow):
         artifact["id"] = new_id
         artifact["name"] = self.artifact_name_edit.text().strip()
         artifact["kind"] = self.artifact_kind_combo.currentText()
-        artifact["type"] = self.artifact_type_combo.currentText().strip()
         artifact["link"] = self.artifact_link_edit.text().strip()
         self.mark_editor_modified(rebuild_graph=True)
 
@@ -1144,14 +1137,27 @@ class MainWindow(QMainWindow):
         self.artifacts.clear()
         self.expanded_node = None
 
+    def select_task_node(self, node: TaskNodeItem):
+        self.selected_kind = "task"
+        self.selected_id = node.task_id
+        self.refresh_editor()
+
+    def toggle_task_node(self, node: TaskNodeItem):
+        if node.expanded:
+            node.set_expanded(False)
+            self.expanded_node = None
+            self.select_task_node(node)
+            self.update_group_items()
+            self.update_json_preview()
+            return
+        self.expand_task_node(node)
+
     def expand_task_node(self, node: TaskNodeItem):
         if self.expanded_node is not None and self.expanded_node is not node:
             self.expanded_node.set_expanded(False)
         self.expanded_node = node
         node.set_expanded(True)
-        self.selected_kind = "task"
-        self.selected_id = node.task_id
-        self.refresh_editor()
+        self.select_task_node(node)
         if self.resolve_node_overlaps():
             self.statusBar().showMessage("展開したタスクに合わせて重なりを避けました", 3000)
 
