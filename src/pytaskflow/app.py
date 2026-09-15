@@ -500,7 +500,10 @@ class MainWindow(QMainWindow):
         self.json_preview.setReadOnly(True)
         editor_tabs.addTab(self.json_preview, "JSON")
         self.editor_dock.setWidget(editor_tabs)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.editor_dock)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.editor_dock)
+        self.splitDockWidget(self.project_dock, self.editor_dock, Qt.Vertical)
+        self.resizeDocks([self.project_dock, self.editor_dock], [280, 420], Qt.Vertical)
+        self.resizeDocks([self.project_dock, self.editor_dock], [380, 380], Qt.Horizontal)
 
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.project_dock.toggleViewAction())
