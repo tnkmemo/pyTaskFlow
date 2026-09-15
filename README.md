@@ -1,5 +1,29 @@
 # TaskFlow PySide6 - Auto Layout Sample
 
+## Install
+
+```bash
+pip install .
+```
+
+For editable development installs:
+
+```bash
+pip install -e .
+```
+
+## Run
+
+```bash
+pytaskflow
+```
+
+You can also run it as a module:
+
+```bash
+python -m pytaskflow
+```
+
 PySide6 + QGraphicsView + JSON の工程依存関係ビューアです。
 
 ## 追加した自動配置
