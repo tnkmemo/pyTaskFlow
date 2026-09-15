@@ -229,6 +229,19 @@ class TaskNodeItem(QGraphicsRectItem):
         if self.expanded:
             self.refresh_resources()
 
+    def refresh_style(self):
+        if self.app_window.dependency_source_id == self.task_id:
+            self.setPen(QPen(QColor("#2563EB"), 3))
+        elif self.app_window.is_dependency_pick_mode:
+            if self.app_window.dependency_source_id is None or self.app_window.can_add_dependency_to(self.task_id):
+                self.setPen(QPen(QColor("#059669"), 2.5, Qt.DashLine))
+            else:
+                self.setPen(QPen(QColor("#9CA3AF"), 1, Qt.DotLine))
+        elif self.isSelected():
+            self.setPen(QPen(QColor("#111827"), 2.5))
+        else:
+            self.setPen(QPen(QColor("#374151"), 1.5))
+
     def add_edge(self, edge):
         self.edges.append(edge)
 
@@ -301,10 +314,15 @@ class TaskNodeItem(QGraphicsRectItem):
             self.update_edges()
             if self.scene() is not None and not self.app_window._layout_in_progress:
                 self.app_window.set_modified(True)
+        elif change == QGraphicsItem.ItemSelectedHasChanged:
+            self.refresh_style()
         return super().itemChange(change, value)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
+            if self.app_window.handle_dependency_target_click(self):
+                event.accept()
+                return
             self.app_window.select_task_node(self)
         super().mousePressEvent(event)
 
@@ -371,12 +389,21 @@ class TaskNodeItem(QGraphicsRectItem):
 
 
 class DependencyView(QGraphicsView):
-    def __init__(self, scene):
+    def __init__(self, scene, app_window):
         super().__init__(scene)
+        self.app_window = app_window
         self.setRenderHint(QPainter.Antialiasing)
         self.setDragMode(QGraphicsView.RubberBandDrag)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            item = self.itemAt(event.position().toPoint())
+            if self.app_window.task_node_for_item(item) is None and self.app_window.handle_canvas_empty_click():
+                event.accept()
+                return
+        super().mousePressEvent(event)
 
     def wheelEvent(self, event):
         if event.modifiers() & Qt.ControlModifier:
@@ -399,7 +426,7 @@ class MainWindow(QMainWindow):
 
         self.scene = QGraphicsScene(self)
         self.scene.setSceneRect(QRectF(-1000, -1000, 5000, 4000))
-        self.view = DependencyView(self.scene)
+        self.view = DependencyView(self.scene, self)
         self.setCentralWidget(self.view)
 
         self.nodes = {}
@@ -415,6 +442,8 @@ class MainWindow(QMainWindow):
         self._updating_editor = False
         self.selected_kind = None
         self.selected_id = None
+        self.is_dependency_pick_mode = False
+        self.dependency_source_id = None
 
         self.build_toolbar()
         self.build_editor_ui()
@@ -451,6 +480,14 @@ class MainWindow(QMainWindow):
         column_action.setToolTip("依存関係からX座標だけを自動配置し、Y座標は維持します")
         column_action.triggered.connect(self.auto_layout_columns_only)
         self.toolbar.addAction(column_action)
+
+        self.toolbar.addSeparator()
+
+        self.add_dependency_action = QAction("依存追加", self)
+        self.add_dependency_action.setCheckable(True)
+        self.add_dependency_action.setToolTip("1番目にクリックしたタスクから、2番目にクリックしたタスクへ依存関係を追加します")
+        self.add_dependency_action.triggered.connect(self.toggle_dependency_pick_mode)
+        self.toolbar.addAction(self.add_dependency_action)
 
         self.toolbar.addSeparator()
 
@@ -1038,6 +1075,7 @@ class MainWindow(QMainWindow):
         return processed != len(task_ids)
 
     def new_project(self):
+        self.cancel_dependency_pick_mode()
         self.current_file = None
         self.selected_kind = None
         self.selected_id = None
@@ -1144,6 +1182,137 @@ class MainWindow(QMainWindow):
         self.selected_kind = "task"
         self.selected_id = node.task_id
         self.refresh_editor()
+        self.refresh_dependency_pick_styles()
+
+    def task_node_for_item(self, item):
+        while item is not None:
+            if isinstance(item, TaskNodeItem):
+                return item
+            item = item.parentItem()
+        return None
+
+    def toggle_dependency_pick_mode(self, checked: bool):
+        if checked:
+            if len(self.nodes) < 2:
+                self.add_dependency_action.setChecked(False)
+                self.statusBar().showMessage("依存関係を追加するにはタスクが2つ以上必要です", 4000)
+                return
+            self.is_dependency_pick_mode = True
+            self.dependency_source_id = None
+            self.statusBar().showMessage("依存元にするタスクをクリックしてください", 6000)
+        else:
+            self.cancel_dependency_pick_mode()
+            return
+        self.refresh_dependency_pick_styles()
+
+    def cancel_dependency_pick_mode(self):
+        self.is_dependency_pick_mode = False
+        self.dependency_source_id = None
+        if hasattr(self, "add_dependency_action"):
+            self.add_dependency_action.setChecked(False)
+        self.refresh_dependency_pick_styles()
+
+    def refresh_dependency_pick_styles(self):
+        if not hasattr(self, "nodes"):
+            return
+        for node in self.nodes.values():
+            node.refresh_style()
+
+    def clear_current_selection(self):
+        self.scene.clearSelection()
+        self.selected_kind = None
+        self.selected_id = None
+        self.refresh_editor()
+        self.refresh_dependency_pick_styles()
+
+    def clear_dependency_source(self):
+        self.dependency_source_id = None
+        self.refresh_dependency_pick_styles()
+
+    def can_add_dependency_to(self, target_id: str) -> bool:
+        source_id = self.dependency_source_id
+        if not self.is_dependency_pick_mode or not source_id:
+            return False
+        if source_id == target_id:
+            return False
+        if self.dependency_exists(source_id, target_id):
+            return False
+        return not self.would_create_cycle(source_id, target_id)
+
+    def dependency_exists(self, source_id: str, target_id: str) -> bool:
+        return any(
+            dep.get("from") == source_id and dep.get("to") == target_id
+            for dep in self.project.get("dependencies", [])
+        )
+
+    def would_create_cycle(self, source_id: str, target_id: str) -> bool:
+        successors = defaultdict(list)
+        for dep in self.project.get("dependencies", []):
+            source = dep.get("from")
+            target = dep.get("to")
+            if source and target:
+                successors[source].append(target)
+        successors[source_id].append(target_id)
+
+        queue = deque([source_id])
+        seen = set()
+        while queue:
+            current = queue.popleft()
+            if current == source_id and current in seen:
+                return True
+            if current in seen:
+                continue
+            seen.add(current)
+            for next_id in successors.get(current, []):
+                if next_id == source_id:
+                    return True
+                queue.append(next_id)
+        return False
+
+    def handle_dependency_target_click(self, node: TaskNodeItem) -> bool:
+        if not self.is_dependency_pick_mode:
+            return False
+
+        source_id = self.dependency_source_id
+        target_id = node.task_id
+        if source_id is None:
+            self.dependency_source_id = target_id
+            self.select_task_node(node)
+            self.statusBar().showMessage(f"{target_id} を依存元にしました。依存先にするタスクをクリックしてください", 6000)
+            return True
+
+        if source_id == target_id:
+            self.statusBar().showMessage("同じタスク同士は依存関係にできません", 4000)
+            return True
+        if self.dependency_exists(source_id, target_id):
+            self.statusBar().showMessage(f"{source_id} -> {target_id} は既に存在します", 4000)
+            return True
+        if self.would_create_cycle(source_id, target_id):
+            self.statusBar().showMessage(f"{source_id} -> {target_id} は循環依存になるため追加できません", 5000)
+            return True
+
+        dep = {"from": source_id, "to": target_id}
+        self.project.setdefault("dependencies", []).append(dep)
+        self.selected_kind = "dependency"
+        self.selected_id = len(self.project["dependencies"]) - 1
+        self.clear_dependency_source()
+        self.mark_editor_modified(rebuild_graph=True)
+        self.refresh_dependency_pick_styles()
+        self.statusBar().showMessage(f"依存関係を追加しました: {source_id} -> {target_id}。続けて依存元をクリックできます", 5000)
+        return True
+
+    def handle_canvas_empty_click(self) -> bool:
+        handled = False
+        if self.is_dependency_pick_mode and self.dependency_source_id is not None:
+            self.clear_dependency_source()
+            self.statusBar().showMessage("依存元の選択を解除しました。依存元にするタスクをクリックしてください", 4000)
+            handled = True
+
+        if self.selected_kind is not None or self.scene.selectedItems():
+            self.clear_current_selection()
+            handled = True
+
+        return handled or self.is_dependency_pick_mode
 
     def toggle_task_node(self, node: TaskNodeItem):
         if node.expanded:
@@ -1220,6 +1389,7 @@ class MainWindow(QMainWindow):
         return artifacts
 
     def load_project(self, project: dict):
+        self.cancel_dependency_pick_mode()
         self._layout_in_progress = True
         try:
             self.clear_graph()
@@ -1534,6 +1704,14 @@ class MainWindow(QMainWindow):
         rect = self.scene.itemsBoundingRect()
         if not rect.isNull():
             self.view.fitInView(rect.adjusted(-80, -80, 80, 80), Qt.KeepAspectRatio)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape and self.is_dependency_pick_mode:
+            self.cancel_dependency_pick_mode()
+            self.statusBar().showMessage("依存関係の追加をキャンセルしました", 3000)
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
 
 def main():
