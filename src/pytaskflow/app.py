@@ -9,7 +9,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QAction, QBrush, QColor, QPainter, QPainterPath, QPen, QPolygonF
+from PySide6.QtGui import QAction, QBrush, QColor, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -104,12 +104,22 @@ def task_group(task: dict) -> str:
 
 
 class EdgeItem(QGraphicsPathItem):
-    def __init__(self, source_node, target_node):
+    def __init__(self, source_node, target_node, dependency: dict, app_window):
         super().__init__()
         self.source_node = source_node
         self.target_node = target_node
+        self.dependency = dependency
+        self.app_window = app_window
+        self.hovered = False
+        self.default_color = QColor("#4B5563")
+        self.selected_color = QColor("#2563EB")
+        self.hover_color = QColor("#111827")
         self.setZValue(-1)
-        self.setPen(QPen(QColor("#4B5563"), 2))
+        self.setFlags(QGraphicsItem.ItemIsSelectable)
+        self.setAcceptHoverEvents(True)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setToolTip(f"依存関係: {self.label()}\n右クリックで解除")
+        self.refresh_style()
         self.update_path()
 
     def update_path(self):
@@ -126,6 +136,60 @@ class EdgeItem(QGraphicsPathItem):
         path = QPainterPath(p1)
         path.cubicTo(c1, c2, p2)
         self.setPath(path)
+
+    def label(self) -> str:
+        return f"{self.dependency.get('from', '')} -> {self.dependency.get('to', '')}"
+
+    def refresh_style(self):
+        if self.isSelected():
+            color = self.selected_color
+            width = 3
+        elif self.hovered:
+            color = self.hover_color
+            width = 3
+        else:
+            color = self.default_color
+            width = 2
+        self.setPen(QPen(color, width))
+
+    def shape(self):
+        stroker = QPainterPathStroker()
+        stroker.setWidth(12)
+        return stroker.createStroke(self.path()).united(super().shape())
+
+    def itemChange(self, change, value):
+        if change == QGraphicsItem.ItemSelectedHasChanged:
+            self.refresh_style()
+        return super().itemChange(change, value)
+
+    def hoverEnterEvent(self, event):
+        self.hovered = True
+        self.refresh_style()
+        super().hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        self.hovered = False
+        self.refresh_style()
+        super().hoverLeaveEvent(event)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and self.app_window.is_dependency_pick_mode:
+            event.accept()
+            return
+        if event.button() == Qt.LeftButton and self.app_window.select_dependency_edge(self):
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def contextMenuEvent(self, event):
+        menu = QMenu()
+        select_action = menu.addAction("依存関係を選択")
+        remove_action = menu.addAction(f"依存関係を解除: {self.label()}")
+        selected = menu.exec(event.screenPos())
+        if selected == select_action:
+            self.app_window.select_dependency_edge(self)
+        elif selected == remove_action:
+            self.app_window.delete_dependency_edge(self)
 
     def paint(self, painter, option, widget=None):
         super().paint(painter, option, widget)
@@ -147,7 +211,7 @@ class EdgeItem(QGraphicsPathItem):
             end.y() - arrow_size * math.sin(angle + math.pi / 6),
         )
 
-        painter.setBrush(QBrush(QColor("#4B5563")))
+        painter.setBrush(QBrush(self.pen().color()))
         painter.setPen(Qt.NoPen)
         painter.drawPolygon(QPolygonF([end, p_a, p_b]))
 
@@ -1111,7 +1175,7 @@ class MainWindow(QMainWindow):
                 source = self.nodes.get(dep.get("from"))
                 target = self.nodes.get(dep.get("to"))
                 if source and target:
-                    edge = EdgeItem(source, target)
+                    edge = EdgeItem(source, target, dep, self)
                     self.scene.addItem(edge)
                     source.add_edge(edge)
                     target.add_edge(edge)
@@ -1183,6 +1247,44 @@ class MainWindow(QMainWindow):
         self.selected_id = node.task_id
         self.refresh_editor()
         self.refresh_dependency_pick_styles()
+
+    def find_dependency_index_for_edge(self, edge: EdgeItem):
+        dependencies = self.project.get("dependencies", [])
+        for index, dep in enumerate(dependencies):
+            if dep is edge.dependency:
+                return index
+        for index, dep in enumerate(dependencies):
+            if dep.get("from") == edge.dependency.get("from") and dep.get("to") == edge.dependency.get("to"):
+                return index
+        return None
+
+    def select_dependency_edge(self, edge: EdgeItem) -> bool:
+        if self.is_dependency_pick_mode:
+            return False
+        index = self.find_dependency_index_for_edge(edge)
+        if index is None:
+            return False
+        self.scene.clearSelection()
+        edge.setSelected(True)
+        self.selected_kind = "dependency"
+        self.selected_id = index
+        self.refresh_editor()
+        return True
+
+    def delete_dependency_edge(self, edge: EdgeItem) -> bool:
+        index = self.find_dependency_index_for_edge(edge)
+        if index is None:
+            return False
+        dependencies = self.project.get("dependencies", [])
+        if not (0 <= index < len(dependencies)):
+            return False
+        label = edge.label()
+        dependencies.pop(index)
+        self.selected_kind = None
+        self.selected_id = None
+        self.mark_editor_modified(rebuild_graph=True)
+        self.statusBar().showMessage(f"依存関係を解除しました: {label}", 4000)
+        return True
 
     def task_node_for_item(self, item):
         while item is not None:
@@ -1414,7 +1516,7 @@ class MainWindow(QMainWindow):
                 source = self.nodes.get(dep.get("from"))
                 target = self.nodes.get(dep.get("to"))
                 if source and target:
-                    edge = EdgeItem(source, target)
+                    edge = EdgeItem(source, target, dep, self)
                     self.scene.addItem(edge)
                     source.add_edge(edge)
                     target.add_edge(edge)
@@ -1709,6 +1811,10 @@ class MainWindow(QMainWindow):
         if event.key() == Qt.Key_Escape and self.is_dependency_pick_mode:
             self.cancel_dependency_pick_mode()
             self.statusBar().showMessage("依存関係の追加をキャンセルしました", 3000)
+            event.accept()
+            return
+        if event.key() == Qt.Key_Delete and self.selected_kind == "dependency":
+            self.delete_selected_item()
             event.accept()
             return
         super().keyPressEvent(event)
