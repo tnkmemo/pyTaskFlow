@@ -100,7 +100,6 @@ python main.py
       "name": "Requirements",
       "status": "未着手",
       "group": "Planning",
-      "link": "https://example.com",
       "inputs": [],
       "outputs": ["A01"],
       "resources": ["M01"],
@@ -112,7 +111,6 @@ python main.py
     {
       "id": "A01",
       "name": "Requirements Document",
-      "kind": "artifact",
       "link": "C:\\Project\\requirements.xlsx"
     }
   ],
@@ -131,7 +129,6 @@ python main.py
 - `name`: タスク名。
 - `status`: ステータス。色分け表示に使われます。
 - `group`: グループ名。グループごとに背景色付きの帯で表示されます。
-- `link`: URL、ファイル、フォルダへのリンク。
 - `inputs`: 入力成果物 ID の配列。
 - `outputs`: 出力成果物 ID の配列。
 - `resources`: 参照資料 ID の配列。
@@ -141,7 +138,6 @@ python main.py
 
 - `id`: 成果物 ID。タスクの `inputs`、`outputs`、`resources` から参照されます。
 - `name`: 表示名。
-- `kind`: `artifact`、`manual`、`reference`、`template` のいずれか。
 - `link`: URL、ファイル、フォルダへのリンク。
 
 ### Dependencies

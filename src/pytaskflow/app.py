@@ -49,7 +49,6 @@ STATUS_COLORS = {
 }
 
 STATUS_OPTIONS = list(STATUS_COLORS.keys())
-ARTIFACT_KIND_OPTIONS = ["artifact", "manual", "reference", "template"]
 GROUP_COLORS = ["#E0F2FE", "#DCFCE7", "#FEF3C7", "#FCE7F3", "#EDE9FE", "#CCFBF1", "#FFE4E6"]
 
 
@@ -73,10 +72,6 @@ def open_link(link: str) -> None:
         subprocess.Popen(["open", str(target)])
     else:
         subprocess.Popen(["xdg-open", str(target)])
-
-
-def get_task_link(task: dict) -> str:
-    return task.get("link") or task.get("folder") or ""
 
 
 def get_artifact_link(artifact: dict) -> str:
@@ -405,8 +400,6 @@ class TaskNodeItem(QGraphicsRectItem):
 
     def contextMenuEvent(self, event):
         menu = QMenu()
-        open_action = menu.addAction("リンクを開く")
-        open_action.setEnabled(bool(get_task_link(self.task)))
 
         artifact_actions = {}
         input_menu = menu.addMenu("入力成果物を開く")
@@ -442,9 +435,7 @@ class TaskNodeItem(QGraphicsRectItem):
             status_actions[action] = status
 
         selected = menu.exec(event.screenPos())
-        if selected == open_action:
-            open_link(get_task_link(self.task))
-        elif selected in artifact_actions:
+        if selected in artifact_actions:
             open_link(get_artifact_link(artifact_actions[selected]))
         elif selected in status_actions:
             self.task["status"] = status_actions[selected]
@@ -631,7 +622,6 @@ class MainWindow(QMainWindow):
         self.task_status_combo.addItems(STATUS_OPTIONS)
         self.task_group_combo = QComboBox()
         self.task_group_combo.setEditable(True)
-        self.task_link_edit = QLineEdit()
         self.task_inputs_edit = QLineEdit()
         self.task_outputs_edit = QLineEdit()
         self.task_resources_edit = QLineEdit()
@@ -642,7 +632,6 @@ class MainWindow(QMainWindow):
         form.addRow("Name", self.task_name_edit)
         form.addRow("Status", self.task_status_combo)
         form.addRow("Group", self.task_group_combo)
-        form.addRow("Link", self.with_link_buttons(self.task_link_edit))
         form.addRow("Inputs", self.task_inputs_edit)
         form.addRow("Outputs", self.task_outputs_edit)
         form.addRow("Resources", self.task_resources_edit)
@@ -652,7 +641,6 @@ class MainWindow(QMainWindow):
         for widget_to_watch in (
             self.task_id_edit,
             self.task_name_edit,
-            self.task_link_edit,
             self.task_inputs_edit,
             self.task_outputs_edit,
             self.task_resources_edit,
@@ -669,19 +657,15 @@ class MainWindow(QMainWindow):
         form = QFormLayout(widget)
         self.artifact_id_edit = QLineEdit()
         self.artifact_name_edit = QLineEdit()
-        self.artifact_kind_combo = QComboBox()
-        self.artifact_kind_combo.addItems(ARTIFACT_KIND_OPTIONS)
         self.artifact_link_edit = QLineEdit()
 
         form.addRow("ID", self.artifact_id_edit)
         form.addRow("Name", self.artifact_name_edit)
-        form.addRow("Kind", self.artifact_kind_combo)
         form.addRow("Link", self.with_link_buttons(self.artifact_link_edit))
 
         self.artifact_id_edit.editingFinished.connect(self.apply_artifact_form)
         self.artifact_name_edit.editingFinished.connect(self.apply_artifact_form)
         self.artifact_link_edit.editingFinished.connect(self.apply_artifact_form)
-        self.artifact_kind_combo.currentTextChanged.connect(self.apply_artifact_form)
         return widget
 
     def build_dependency_form(self):
@@ -856,7 +840,6 @@ class MainWindow(QMainWindow):
         status = str(task.get("status", STATUS_OPTIONS[0]))
         self.task_status_combo.setCurrentText(status if status in STATUS_OPTIONS else STATUS_OPTIONS[0])
         self.task_group_combo.setCurrentText(task_group(task))
-        self.task_link_edit.setText(str(get_task_link(task)))
         self.task_inputs_edit.setText(self.id_list_to_text(task.get("inputs")))
         self.task_outputs_edit.setText(self.id_list_to_text(task.get("outputs")))
         self.task_resources_edit.setText(self.id_list_to_text(task.get("resources")))
@@ -871,7 +854,6 @@ class MainWindow(QMainWindow):
         self.form_stack.setCurrentIndex(2)
         self.artifact_id_edit.setText(str(artifact.get("id", "")))
         self.artifact_name_edit.setText(str(artifact.get("name", "")))
-        self.artifact_kind_combo.setCurrentText(str(artifact.get("kind", "artifact")))
         self.artifact_link_edit.setText(str(get_artifact_link(artifact)))
 
     def populate_dependency_form(self):
@@ -921,7 +903,6 @@ class MainWindow(QMainWindow):
             "name": "New Task",
             "status": STATUS_OPTIONS[0],
             "group": "",
-            "link": "",
             "inputs": [],
             "outputs": [],
             "resources": [],
@@ -935,7 +916,7 @@ class MainWindow(QMainWindow):
 
     def add_artifact(self):
         artifact_id = self.next_id("A", [artifact.get("id") for artifact in self.project.get("artifacts", [])])
-        artifact = {"id": artifact_id, "name": "New Artifact", "kind": "artifact", "link": ""}
+        artifact = {"id": artifact_id, "name": "New Artifact", "link": ""}
         self.project.setdefault("artifacts", []).append(artifact)
         self.selected_kind = "artifact"
         self.selected_id = artifact_id
@@ -1038,7 +1019,8 @@ class MainWindow(QMainWindow):
             task["group"] = group
         else:
             task.pop("group", None)
-        task["link"] = self.task_link_edit.text().strip()
+        task.pop("link", None)
+        task.pop("folder", None)
         task["inputs"] = self.text_to_id_list(self.task_inputs_edit.text())
         task["outputs"] = self.text_to_id_list(self.task_outputs_edit.text())
         task["resources"] = self.text_to_id_list(self.task_resources_edit.text())
@@ -1073,7 +1055,7 @@ class MainWindow(QMainWindow):
 
         artifact["id"] = new_id
         artifact["name"] = self.artifact_name_edit.text().strip()
-        artifact["kind"] = self.artifact_kind_combo.currentText()
+        artifact.pop("kind", None)
         artifact["link"] = self.artifact_link_edit.text().strip()
         self.mark_editor_modified(rebuild_graph=True)
 
@@ -1490,12 +1472,20 @@ class MainWindow(QMainWindow):
                 artifacts.append(artifact)
         return artifacts
 
+    def remove_removed_fields(self):
+        for task in self.project.get("tasks", []):
+            task.pop("link", None)
+            task.pop("folder", None)
+        for artifact in self.project.get("artifacts", []):
+            artifact.pop("kind", None)
+
     def load_project(self, project: dict):
         self.cancel_dependency_pick_mode()
         self._layout_in_progress = True
         try:
             self.clear_graph()
             self.project = project
+            self.remove_removed_fields()
             self.tasks = {
                 str(task.get("id")): task
                 for task in project.get("tasks", [])
@@ -1546,6 +1536,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(str(self.current_file))
 
     def sync_positions(self):
+        self.remove_removed_fields()
         for node in self.nodes.values():
             node.task["x"] = node.pos().x()
             node.task["y"] = node.pos().y()

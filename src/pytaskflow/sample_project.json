@@ -5,7 +5,6 @@
       "id": "T01",
       "name": "仕様作成",
       "status": "完了",
-      "link": "https://google.com",
       "outputs": [
         "A01"
       ],
@@ -22,7 +21,6 @@
       "name": "設計仕様作成",
       "status": "進行中",
       "group": "仕様策定",
-      "link": "C:\\Project\\hoge.xlsx",
       "inputs": [
         "A01"
       ],
@@ -41,7 +39,6 @@
       "name": "検証仕様作成",
       "status": "完了",
       "group": "仕様策定",
-      "link": "C:\\Project\\verification",
       "inputs": [
         "A01"
       ],
@@ -59,7 +56,6 @@
       "name": "ブロック検証",
       "status": "未着手",
       "group": "検証",
-      "link": "C:\\Project\\unit_test",
       "inputs": [
         "A02",
         "A03"
@@ -79,7 +75,6 @@
       "name": "接続検証",
       "status": "未着手",
       "group": "検証",
-      "link": "C:\\Project\\integration",
       "inputs": [
         "A04"
       ],
@@ -97,7 +92,6 @@
       "name": "RTL設計",
       "status": "未着手",
       "group": "設計",
-      "link": "C:\\Project\\review",
       "inputs": [
         "A02"
       ],
@@ -115,7 +109,6 @@
       "name": "リリース判定",
       "status": "未着手",
       "group": "リリース",
-      "link": "C:\\Project\\release",
       "inputs": [
         "A04",
         "A06"
@@ -134,85 +127,71 @@
     {
       "id": "A01",
       "name": "仕様書",
-      "kind": "artifact",
       "link": "C:\\Project\\spec\\仕様書.xlsx"
     },
     {
       "id": "A02",
       "name": "RTL一式",
-      "kind": "artifact",
       "link": "C:\\Project\\rtl"
     },
     {
       "id": "A03",
       "name": "検証仕様書",
-      "kind": "artifact",
       "link": "C:\\Project\\verification\\検証仕様書.xlsx"
     },
     {
       "id": "A04",
       "name": "単体検証結果",
-      "kind": "artifact",
       "link": "C:\\Project\\unit_test\\単体検証結果.xlsx"
     },
     {
       "id": "A05",
       "name": "結合検証結果",
-      "kind": "artifact",
       "link": "C:\\Project\\integration\\結合検証結果.xlsx"
     },
     {
       "id": "A06",
       "name": "レビュー記録",
-      "kind": "artifact",
       "link": "C:\\Project\\review\\レビュー記録.xlsx"
     },
     {
       "id": "A07",
       "name": "リリース判定資料",
-      "kind": "artifact",
       "link": "C:\\Project\\release\\リリース判定資料.xlsx"
     },
     {
       "id": "M01",
       "name": "仕様確定手順書",
-      "kind": "manual",
       "link": "C:\\Project\\manuals\\spec_flow.pdf"
     },
     {
       "id": "M02",
       "name": "RTL設計マニュアル",
-      "kind": "manual",
       "link": "C:\\Project\\manuals\\rtl_design.pdf"
     },
     {
       "id": "M03",
       "name": "検証仕様作成ガイド",
-      "kind": "manual",
       "link": "C:\\Project\\manuals\\verification_plan.pdf"
     },
     {
       "id": "M04",
       "name": "検証実施マニュアル",
-      "kind": "manual",
       "link": "C:\\Project\\manuals\\verification_run.pdf"
     },
     {
       "id": "M05",
       "name": "リリース判定基準",
-      "kind": "manual",
       "link": "C:\\Project\\manuals\\release_criteria.xlsx"
     },
     {
       "id": "R01",
       "name": "コーディング規約",
-      "kind": "reference",
       "link": "https://example.com/coding-rule"
     },
     {
       "id": "T01_DOC",
       "name": "検証結果テンプレート",
-      "kind": "template",
       "link": "C:\\Project\\templates\\verification_result.xlsx"
     }
   ],
