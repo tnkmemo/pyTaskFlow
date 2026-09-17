@@ -1,38 +1,249 @@
 {
   "project_name": "工程依存関係サンプル",
   "tasks": [
-    {"id":"T01","name":"仕様確定","status":"完了","group":"企画","link":"https://google.com","outputs":["A01"],"resources":["M01"],"x":60,"y":250},
-    {"id":"T02","name":"RTL設計","status":"進行中","group":"設計","link":"C:\\Project\\hoge.xlsx","inputs":["A01"],"outputs":["A02"],"resources":["M02","R01"],"x":350,"y":40},
-    {"id":"T03","name":"検証仕様作成","status":"完了","group":"検証","link":"C:\\Project\\verification","inputs":["A01"],"outputs":["A03"],"resources":["M03"],"x":350,"y":350},
-    {"id":"T04","name":"単体検証","status":"未着手","group":"検証","link":"C:\\Project\\unit_test","inputs":["A02","A03"],"outputs":["A04"],"resources":["M04","T01_DOC"],"x":670,"y":180},
-    {"id":"T05","name":"結合検証","status":"未着手","group":"検証","link":"C:\\Project\\integration","inputs":["A04"],"outputs":["A05"],"resources":["M04"],"x":970,"y":100},
-    {"id":"T06","name":"レビュー","status":"未着手","group":"設計","link":"C:\\Project\\review","inputs":["A02"],"outputs":["A06"],"resources":["R01"],"x":690,"y":430},
-    {"id":"T07","name":"リリース判定","status":"未着手","group":"リリース","link":"C:\\Project\\release","inputs":["A04","A06"],"outputs":["A07"],"resources":["M05"],"x":1010,"y":400}
+    {
+      "id": "T01",
+      "name": "仕様作成",
+      "status": "完了",
+      "link": "https://google.com",
+      "outputs": [
+        "A01"
+      ],
+      "resources": [
+        "M01"
+      ],
+      "x": 0.0,
+      "y": 65.0,
+      "inputs": [],
+      "group": "仕様策定"
+    },
+    {
+      "id": "T02",
+      "name": "設計仕様作成",
+      "status": "進行中",
+      "group": "仕様策定",
+      "link": "C:\\Project\\hoge.xlsx",
+      "inputs": [
+        "A01"
+      ],
+      "outputs": [
+        "A02"
+      ],
+      "resources": [
+        "M02",
+        "R01"
+      ],
+      "x": 300.0,
+      "y": 0.0
+    },
+    {
+      "id": "T03",
+      "name": "検証仕様作成",
+      "status": "完了",
+      "group": "仕様策定",
+      "link": "C:\\Project\\verification",
+      "inputs": [
+        "A01"
+      ],
+      "outputs": [
+        "A03"
+      ],
+      "resources": [
+        "M03"
+      ],
+      "x": 300.0,
+      "y": 130.0
+    },
+    {
+      "id": "T04",
+      "name": "ブロック検証",
+      "status": "未着手",
+      "group": "検証",
+      "link": "C:\\Project\\unit_test",
+      "inputs": [
+        "A02",
+        "A03"
+      ],
+      "outputs": [
+        "A04"
+      ],
+      "resources": [
+        "M04",
+        "T01_DOC"
+      ],
+      "x": 600.0,
+      "y": 130.0
+    },
+    {
+      "id": "T05",
+      "name": "接続検証",
+      "status": "未着手",
+      "group": "検証",
+      "link": "C:\\Project\\integration",
+      "inputs": [
+        "A04"
+      ],
+      "outputs": [
+        "A05"
+      ],
+      "resources": [
+        "M04"
+      ],
+      "x": 900.0,
+      "y": 130.0
+    },
+    {
+      "id": "T06",
+      "name": "RTL設計",
+      "status": "未着手",
+      "group": "設計",
+      "link": "C:\\Project\\review",
+      "inputs": [
+        "A02"
+      ],
+      "outputs": [
+        "A06"
+      ],
+      "resources": [
+        "R01"
+      ],
+      "x": 600.0,
+      "y": 0.0
+    },
+    {
+      "id": "T07",
+      "name": "リリース判定",
+      "status": "未着手",
+      "group": "リリース",
+      "link": "C:\\Project\\release",
+      "inputs": [
+        "A04",
+        "A06"
+      ],
+      "outputs": [
+        "A07"
+      ],
+      "resources": [
+        "M05"
+      ],
+      "x": 1200.0,
+      "y": 65.0
+    }
   ],
   "artifacts": [
-    {"id":"A01","name":"仕様書","kind":"artifact","link":"C:\\Project\\spec\\仕様書.xlsx"},
-    {"id":"A02","name":"RTL一式","kind":"artifact","link":"C:\\Project\\rtl"},
-    {"id":"A03","name":"検証仕様書","kind":"artifact","link":"C:\\Project\\verification\\検証仕様書.xlsx"},
-    {"id":"A04","name":"単体検証結果","kind":"artifact","link":"C:\\Project\\unit_test\\単体検証結果.xlsx"},
-    {"id":"A05","name":"結合検証結果","kind":"artifact","link":"C:\\Project\\integration\\結合検証結果.xlsx"},
-    {"id":"A06","name":"レビュー記録","kind":"artifact","link":"C:\\Project\\review\\レビュー記録.xlsx"},
-    {"id":"A07","name":"リリース判定資料","kind":"artifact","link":"C:\\Project\\release\\リリース判定資料.xlsx"},
-    {"id":"M01","name":"仕様確定手順書","kind":"manual","link":"C:\\Project\\manuals\\spec_flow.pdf"},
-    {"id":"M02","name":"RTL設計マニュアル","kind":"manual","link":"C:\\Project\\manuals\\rtl_design.pdf"},
-    {"id":"M03","name":"検証仕様作成ガイド","kind":"manual","link":"C:\\Project\\manuals\\verification_plan.pdf"},
-    {"id":"M04","name":"検証実施マニュアル","kind":"manual","link":"C:\\Project\\manuals\\verification_run.pdf"},
-    {"id":"M05","name":"リリース判定基準","kind":"manual","link":"C:\\Project\\manuals\\release_criteria.xlsx"},
-    {"id":"R01","name":"コーディング規約","kind":"reference","link":"https://example.com/coding-rule"},
-    {"id":"T01_DOC","name":"検証結果テンプレート","kind":"template","link":"C:\\Project\\templates\\verification_result.xlsx"}
+    {
+      "id": "A01",
+      "name": "仕様書",
+      "kind": "artifact",
+      "link": "C:\\Project\\spec\\仕様書.xlsx"
+    },
+    {
+      "id": "A02",
+      "name": "RTL一式",
+      "kind": "artifact",
+      "link": "C:\\Project\\rtl"
+    },
+    {
+      "id": "A03",
+      "name": "検証仕様書",
+      "kind": "artifact",
+      "link": "C:\\Project\\verification\\検証仕様書.xlsx"
+    },
+    {
+      "id": "A04",
+      "name": "単体検証結果",
+      "kind": "artifact",
+      "link": "C:\\Project\\unit_test\\単体検証結果.xlsx"
+    },
+    {
+      "id": "A05",
+      "name": "結合検証結果",
+      "kind": "artifact",
+      "link": "C:\\Project\\integration\\結合検証結果.xlsx"
+    },
+    {
+      "id": "A06",
+      "name": "レビュー記録",
+      "kind": "artifact",
+      "link": "C:\\Project\\review\\レビュー記録.xlsx"
+    },
+    {
+      "id": "A07",
+      "name": "リリース判定資料",
+      "kind": "artifact",
+      "link": "C:\\Project\\release\\リリース判定資料.xlsx"
+    },
+    {
+      "id": "M01",
+      "name": "仕様確定手順書",
+      "kind": "manual",
+      "link": "C:\\Project\\manuals\\spec_flow.pdf"
+    },
+    {
+      "id": "M02",
+      "name": "RTL設計マニュアル",
+      "kind": "manual",
+      "link": "C:\\Project\\manuals\\rtl_design.pdf"
+    },
+    {
+      "id": "M03",
+      "name": "検証仕様作成ガイド",
+      "kind": "manual",
+      "link": "C:\\Project\\manuals\\verification_plan.pdf"
+    },
+    {
+      "id": "M04",
+      "name": "検証実施マニュアル",
+      "kind": "manual",
+      "link": "C:\\Project\\manuals\\verification_run.pdf"
+    },
+    {
+      "id": "M05",
+      "name": "リリース判定基準",
+      "kind": "manual",
+      "link": "C:\\Project\\manuals\\release_criteria.xlsx"
+    },
+    {
+      "id": "R01",
+      "name": "コーディング規約",
+      "kind": "reference",
+      "link": "https://example.com/coding-rule"
+    },
+    {
+      "id": "T01_DOC",
+      "name": "検証結果テンプレート",
+      "kind": "template",
+      "link": "C:\\Project\\templates\\verification_result.xlsx"
+    }
   ],
   "dependencies": [
-    {"from":"T01","to":"T02"},
-    {"from":"T01","to":"T03"},
-    {"from":"T02","to":"T04"},
-    {"from":"T03","to":"T04"},
-    {"from":"T02","to":"T06"},
-    {"from":"T04","to":"T05"},
-    {"from":"T04","to":"T07"},
-    {"from":"T06","to":"T07"}
+    {
+      "from": "T01",
+      "to": "T02"
+    },
+    {
+      "from": "T01",
+      "to": "T03"
+    },
+    {
+      "from": "T03",
+      "to": "T04"
+    },
+    {
+      "from": "T02",
+      "to": "T06"
+    },
+    {
+      "from": "T04",
+      "to": "T05"
+    },
+    {
+      "from": "T05",
+      "to": "T07"
+    },
+    {
+      "from": "T06",
+      "to": "T07"
+    }
   ]
 }
