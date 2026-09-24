@@ -21,6 +21,16 @@ PySide6 で作られた、JSON ベースのタスク依存関係ビューア / �
 - Python 3.10 以上
 - PySide6 6.5 以上
 
+## ライセンス
+
+pyTaskFlow 本体は [MIT License](LICENSE) で提供されます。
+
+このアプリケーションは Qt for Python の `PySide6` を使用しています。PySide6 / Qt は、オープンソース利用では LGPLv3、GPLv2、GPLv3、または商用ライセンスで提供されています。このプロジェクトでは PySide6 を LGPLv3 として利用する想定です。
+
+第三者ライブラリとそのライセンスは [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) を参照してください。LGPLv3 および関連する GPLv3 の全文は `licenses/` に同梱しています。
+
+PySide6 / Qt を同梱して配布する場合は、Qt を使用していることの明示、LGPLv3 の全文提供、利用者が LGPLv3 に基づく権利を行使できる形での配布条件を確認してください。
+
 ## インストール
 
 ```bash
