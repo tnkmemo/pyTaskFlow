@@ -5,11 +5,12 @@ import subprocess
 import sys
 import webbrowser
 from collections import defaultdict, deque
+from importlib.resources import files
 from pathlib import Path
 from urllib.parse import urlparse
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QAction, QBrush, QColor, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF
+from PySide6.QtGui import QAction, QBrush, QColor, QIcon, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -50,6 +51,25 @@ STATUS_COLORS = {
 
 STATUS_OPTIONS = list(STATUS_COLORS.keys())
 GROUP_COLORS = ["#E0F2FE", "#DCFCE7", "#FEF3C7", "#FCE7F3", "#EDE9FE", "#CCFBF1", "#FFE4E6"]
+APP_ICON_RESOURCE = "assets/app_icon.svg"
+WINDOWS_APP_ID = "pyTaskFlow.app"
+
+
+def load_app_icon() -> QIcon:
+    icon_path = files("pytaskflow").joinpath(APP_ICON_RESOURCE)
+    return QIcon(str(icon_path))
+
+
+def configure_windows_taskbar_icon() -> None:
+    if not sys.platform.startswith("win"):
+        return
+
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(WINDOWS_APP_ID)
+    except Exception:
+        pass
 
 
 def open_link(link: str) -> None:
@@ -477,6 +497,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("TaskFlow Auto Layout Sample")
+        self.setWindowIcon(load_app_icon())
         self.resize(1250, 780)
 
         self.scene = QGraphicsScene(self)
@@ -1812,7 +1833,9 @@ class MainWindow(QMainWindow):
 
 
 def main():
+    configure_windows_taskbar_icon()
     app = QApplication(sys.argv)
+    app.setWindowIcon(load_app_icon())
     window = MainWindow()
     window.show()
 

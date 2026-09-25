@@ -27,4 +27,4 @@ license-files = ["LICENSE", "THIRD_PARTY_LICENSES.md", "licenses/*.txt"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-pytaskflow = ["sample_project.json"]
+pytaskflow = ["sample_project.json", "assets/*.svg"]

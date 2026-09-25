@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="pyTaskFlow app icon">
+  <defs>
+    <linearGradient id="bg" x1="36" y1="28" x2="218" y2="228" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F766E"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0F172A" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="48" fill="url(#bg)"/>
+  <g filter="url(#shadow)">
+    <path d="M63 74h62c11 0 20 9 20 20v6h32c9 0 16 7 16 16v22c0 9-7 16-16 16h-32v8c0 11-9 20-20 20H63c-11 0-20-9-20-20V94c0-11 9-20 20-20Z" fill="#F8FAFC"/>
+    <rect x="59" y="90" width="70" height="76" rx="14" fill="#D1FAE5"/>
+    <path d="M80 121l13 13 35-37" fill="none" stroke="#0F766E" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M145 127h32" fill="none" stroke="#F8FAFC" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="181" cy="127" r="20" fill="#FACC15"/>
+    <path d="M177 117l12 10-12 10" fill="none" stroke="#0F172A" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
