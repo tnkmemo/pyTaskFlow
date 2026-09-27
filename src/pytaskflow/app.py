@@ -1567,7 +1567,7 @@ class MainWindow(QMainWindow):
         self.load_project(project)
         if remember:
             self.remember_current_file()
-        self.statusBar().showMessage(str(self.current_file))
+        self.statusBar().showMessage(f"読み込みました: {self.current_file.name}", 3000)
         return True
 
     def open_json(self):
@@ -1587,7 +1587,7 @@ class MainWindow(QMainWindow):
 
         self.current_file = Path(filename)
         self.load_project(project)
-        self.statusBar().showMessage(str(self.current_file))
+        self.statusBar().showMessage(self.current_file.name, 3000)
 
     def sync_positions(self):
         self.remove_removed_fields()
@@ -1613,7 +1613,7 @@ class MainWindow(QMainWindow):
             return
 
         self.set_modified(False)
-        self.statusBar().showMessage(f"保存しました: {self.current_file}", 3000)
+        self.statusBar().showMessage(f"保存しました: {self.current_file.name}", 3000)
         self.update_json_preview()
         self.remember_current_file()
 
