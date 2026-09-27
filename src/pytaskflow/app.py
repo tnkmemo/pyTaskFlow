@@ -32,7 +32,6 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenu,
     QMessageBox,
-    QPlainTextEdit,
     QPushButton,
     QDoubleSpinBox,
     QStackedWidget,
@@ -419,7 +418,6 @@ class TaskNodeItem(QGraphicsRectItem):
         super().mouseReleaseEvent(event)
         if not self.app_window._layout_in_progress:
             self.app_window.update_group_items()
-            self.app_window.update_json_preview()
 
     def contextMenuEvent(self, event):
         menu = QMenu()
@@ -610,12 +608,7 @@ class MainWindow(QMainWindow):
 
         self.editor_dock = QDockWidget("Editor", self)
         self.editor_dock.setObjectName("editorDock")
-        editor_tabs = QTabWidget()
-        editor_tabs.addTab(self.build_form_stack(), "Edit")
-        self.json_preview = QPlainTextEdit()
-        self.json_preview.setReadOnly(True)
-        editor_tabs.addTab(self.json_preview, "JSON")
-        self.editor_dock.setWidget(editor_tabs)
+        self.editor_dock.setWidget(self.build_form_stack())
         self.addDockWidget(Qt.LeftDockWidgetArea, self.editor_dock)
         self.splitDockWidget(self.project_dock, self.editor_dock, Qt.Vertical)
         self.resizeDocks([self.project_dock, self.editor_dock], [280, 420], Qt.Vertical)
@@ -835,13 +828,8 @@ class MainWindow(QMainWindow):
             self.task_group_combo.addItems(self.group_names())
             self.task_group_combo.setCurrentText(current_group)
             self.populate_selected_form()
-            self.update_json_preview()
         finally:
             self._updating_editor = False
-
-    def update_json_preview(self):
-        self.sync_positions()
-        self.json_preview.setPlainText(json.dumps(self.project, ensure_ascii=False, indent=2))
 
     def populate_selected_form(self):
         if self.selected_kind == "task":
@@ -1428,7 +1416,6 @@ class MainWindow(QMainWindow):
             self.expanded_node = None
             self.select_task_node(node)
             self.update_group_items()
-            self.update_json_preview()
             return
         self.expand_task_node(node)
 
@@ -1614,7 +1601,6 @@ class MainWindow(QMainWindow):
 
         self.set_modified(False)
         self.statusBar().showMessage(f"保存しました: {self.current_file.name}", 3000)
-        self.update_json_preview()
         self.remember_current_file()
 
     def validate_project(self) -> list[str]:
