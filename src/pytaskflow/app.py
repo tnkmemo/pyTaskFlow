@@ -888,7 +888,11 @@ class MainWindow(QMainWindow):
             self.project_tabs.setCurrentWidget(self.artifact_list)
         elif kind == "dependency":
             self.project_tabs.setCurrentWidget(self.dependency_list)
-        self.refresh_editor()
+        self._updating_editor = True
+        try:
+            self.populate_selected_form()
+        finally:
+            self._updating_editor = False
 
     def on_task_item_selected(self, current, previous):
         self.select_editor_item("task", current)
