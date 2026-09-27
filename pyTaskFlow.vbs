@@ -1,6 +1,6 @@
 Option Explicit
 
-Dim shell, fso, repoDir, pythonw
+Dim shell, fso, repoDir, pythonw, command, arg
 
 Set shell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
@@ -16,4 +16,8 @@ If Not fso.FileExists(pythonw) Then
 End If
 
 shell.CurrentDirectory = repoDir
-shell.Run """" & pythonw & """ -m pytaskflow", 0, False
+command = """" & pythonw & """ -m pytaskflow"
+For Each arg In WScript.Arguments
+    command = command & " """ & Replace(arg, """", """""") & """"
+Next
+shell.Run command, 0, False

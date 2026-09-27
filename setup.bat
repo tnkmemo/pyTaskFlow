@@ -39,5 +39,5 @@ if errorlevel 1 (
 
 echo.
 echo Setup complete.
-echo Double-click run_pytaskflow.vbs to start pyTaskFlow.
+echo Double-click pyTaskFlow.vbs to start pyTaskFlow.
 pause

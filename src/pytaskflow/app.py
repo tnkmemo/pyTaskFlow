@@ -9,7 +9,7 @@ from importlib.resources import files
 from pathlib import Path
 from urllib.parse import urlparse
 
-from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtCore import QPointF, QRectF, QSettings, Qt
 from PySide6.QtGui import QAction, QBrush, QColor, QIcon, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -53,6 +53,9 @@ STATUS_OPTIONS = list(STATUS_COLORS.keys())
 GROUP_COLORS = ["#E0F2FE", "#DCFCE7", "#FEF3C7", "#FCE7F3", "#EDE9FE", "#CCFBF1", "#FFE4E6"]
 APP_ICON_RESOURCE = "assets/app_icon.svg"
 WINDOWS_APP_ID = "pyTaskFlow.app"
+SETTINGS_ORG = "pyTaskFlow"
+SETTINGS_APP = "pyTaskFlow"
+LAST_PROJECT_FILE_KEY = "lastProjectFile"
 
 
 def load_app_icon() -> QIcon:
@@ -1540,10 +1543,40 @@ class MainWindow(QMainWindow):
         self.refresh_editor()
         self.set_modified(False)
 
+    def resolve_project_path(self, filename) -> Path:
+        path = Path(filename).expanduser()
+        if not path.is_absolute():
+            path = Path.cwd() / path
+        return path
+
+    def remember_current_file(self):
+        if self.current_file:
+            QSettings(SETTINGS_ORG, SETTINGS_APP).setValue(LAST_PROJECT_FILE_KEY, str(self.current_file))
+
+    def load_project_file(self, filename, *, remember=True, show_errors=True) -> bool:
+        project_path = self.resolve_project_path(filename)
+        try:
+            with open(project_path, "r", encoding="utf-8") as f:
+                project = json.load(f)
+        except Exception as e:
+            if show_errors:
+                QMessageBox.critical(self, "読み込みエラー", str(e))
+            return False
+
+        self.current_file = project_path
+        self.load_project(project)
+        if remember:
+            self.remember_current_file()
+        self.statusBar().showMessage(str(self.current_file))
+        return True
+
     def open_json(self):
         filename, _ = QFileDialog.getOpenFileName(self, "プロジェクトJSONを開く", "", "JSON Files (*.json)")
         if not filename:
             return
+
+        self.load_project_file(filename)
+        return
 
         try:
             with open(filename, "r", encoding="utf-8") as f:
@@ -1582,6 +1615,7 @@ class MainWindow(QMainWindow):
         self.set_modified(False)
         self.statusBar().showMessage(f"保存しました: {self.current_file}", 3000)
         self.update_json_preview()
+        self.remember_current_file()
 
     def validate_project(self) -> list[str]:
         errors = []
@@ -1831,13 +1865,30 @@ class MainWindow(QMainWindow):
             return
         super().keyPressEvent(event)
 
+def load_startup_project(window: MainWindow, startup_project_file=None) -> bool:
+    if startup_project_file:
+        window.load_project_file(startup_project_file, remember=True, show_errors=True)
+        return True
+
+    last_project_file = QSettings(SETTINGS_ORG, SETTINGS_APP).value(LAST_PROJECT_FILE_KEY, "")
+    if last_project_file:
+        return window.load_project_file(last_project_file, remember=True, show_errors=False)
+
+    return False
+
 
 def main():
     configure_windows_taskbar_icon()
+    startup_project_file = sys.argv[1] if len(sys.argv) > 1 else None
     app = QApplication(sys.argv)
+    app.setOrganizationName(SETTINGS_ORG)
+    app.setApplicationName(SETTINGS_APP)
     app.setWindowIcon(load_app_icon())
     window = MainWindow()
     window.show()
+
+    if load_startup_project(window, startup_project_file):
+        sys.exit(app.exec())
 
     sample = Path(__file__).with_name("sample_project.json")
     if sample.exists():
