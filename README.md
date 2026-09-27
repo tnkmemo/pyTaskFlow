@@ -33,6 +33,13 @@ PySide6 / Qt を同梱して配布する場合は、Qt を使用しているこ�
 
 ## インストール
 
+Windows で git clone したリポジトリから起動する場合:
+
+1. `setup.bat` をダブルクリックして初回セットアップします。
+2. 以後は `run_pytaskflow.vbs` をダブルクリックして起動します。
+
+`setup.bat` はリポジトリ直下に `.venv` を作成し、`pip install -e .` で editable install します。
+
 ```bash
 pip install .
 ```
