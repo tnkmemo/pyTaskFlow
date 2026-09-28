@@ -125,6 +125,10 @@ def artifact_label(artifact: dict) -> str:
     return str(name)
 
 
+def diagram_artifact_label(artifact: dict) -> str:
+    return str(artifact.get("name") or "Unnamed")
+
+
 def task_group(task: dict) -> str:
     return str(task.get("group", "")).strip()
 
@@ -246,14 +250,26 @@ class ResourceTextItem(QGraphicsTextItem):
     def __init__(self, text: str, artifact: dict, parent=None):
         super().__init__(text, parent)
         self.artifact = artifact
-        self.setFont(make_diagram_font(10))
+        self.setFont(make_diagram_font(14))
         self.setDefaultTextColor(QColor("#1F2937"))
         self.setTextWidth(TaskNodeItem.WIDTH - 22)
         if get_artifact_link(artifact):
             self.setCursor(Qt.PointingHandCursor)
 
+    def link_hit_rect(self) -> QRectF:
+        width = min(self.document().idealWidth(), self.textWidth())
+        return QRectF(0, 0, width + 4, self.boundingRect().height())
+
+    def shape(self):
+        path = QPainterPath()
+        path.addRect(self.link_hit_rect())
+        return path
+
     def mousePressEvent(self, event):
         link = get_artifact_link(self.artifact)
+        if not self.link_hit_rect().contains(event.pos()):
+            event.ignore()
+            return
         if event.button() == Qt.LeftButton and link:
             open_link(link)
             event.accept()
@@ -262,10 +278,10 @@ class ResourceTextItem(QGraphicsTextItem):
 
 
 class TaskNodeItem(QGraphicsRectItem):
-    WIDTH = 220
-    HEIGHT = 64
-    RESOURCE_LINE_HEIGHT = 25
-    RESOURCE_SECTION_HEIGHT = 23
+    WIDTH = 280
+    HEIGHT = 96
+    RESOURCE_LINE_HEIGHT = 36
+    RESOURCE_SECTION_HEIGHT = 34
     RESOURCE_BOTTOM_MARGIN = 12
 
     def __init__(self, task: dict, app_window):
@@ -285,10 +301,10 @@ class TaskNodeItem(QGraphicsRectItem):
         self.setBrush(QBrush(STATUS_COLORS.get(task.get("status"), QColor("#FFFFFF"))))
 
         self.title_item = QGraphicsTextItem(self)
-        self.title_item.setFont(make_diagram_font(12, bold=True))
+        self.title_item.setFont(make_diagram_font(18, bold=True))
         self.title_item.setDefaultTextColor(QColor("#111827"))
         self.title_item.setTextWidth(self.WIDTH - 20)
-        self.title_item.setPos(10, 12)
+        self.title_item.setPos(10, 18)
         self.title_item.setAcceptedMouseButtons(Qt.NoButton)
 
         self.refresh_text()
@@ -299,7 +315,7 @@ class TaskNodeItem(QGraphicsRectItem):
         return self.task["id"]
 
     def refresh_text(self):
-        self.title_item.setPlainText(f'{self.task["id"]}  {self.task["name"]}')
+        self.title_item.setPlainText(str(self.task.get("name", "")))
         self.setBrush(QBrush(STATUS_COLORS.get(self.task.get("status"), QColor("#FFFFFF"))))
         if self.expanded:
             self.refresh_resources()
@@ -345,7 +361,7 @@ class TaskNodeItem(QGraphicsRectItem):
         sections = [(title, artifacts) for title, artifacts in self.resource_sections() if artifacts]
         if not sections:
             item = QGraphicsTextItem("関連リソースなし", self)
-            item.setFont(make_diagram_font(10))
+            item.setFont(make_diagram_font(14))
             item.setDefaultTextColor(QColor("#6B7280"))
             item.setTextWidth(self.WIDTH - 22)
             item.setPos(10, y)
@@ -355,7 +371,7 @@ class TaskNodeItem(QGraphicsRectItem):
         else:
             for title, artifacts in sections:
                 header = QGraphicsTextItem(title, self)
-                header.setFont(make_diagram_font(10, bold=True))
+                header.setFont(make_diagram_font(14, bold=True))
                 header.setDefaultTextColor(QColor("#111827"))
                 header.setTextWidth(self.WIDTH - 22)
                 header.setPos(10, y)
@@ -364,7 +380,7 @@ class TaskNodeItem(QGraphicsRectItem):
                 y += self.RESOURCE_SECTION_HEIGHT
 
                 for artifact in artifacts:
-                    item = ResourceTextItem(f"- {artifact_label(artifact)}", artifact, self)
+                    item = ResourceTextItem(f"- {diagram_artifact_label(artifact)}", artifact, self)
                     item.setPos(14, y)
                     self.resource_items.append(item)
                     y += self.RESOURCE_LINE_HEIGHT
@@ -513,8 +529,8 @@ class DependencyView(QGraphicsView):
 
 
 class MainWindow(QMainWindow):
-    COLUMN_SPACING = 340
-    ROW_SPACING = 150
+    COLUMN_SPACING = 420
+    ROW_SPACING = 165
     NODE_VERTICAL_GAP = 32
 
     def __init__(self):
@@ -1248,7 +1264,7 @@ class MainWindow(QMainWindow):
             self.group_items.append(group_rect)
 
             label = QGraphicsTextItem(group)
-            label.setFont(make_diagram_font(10, bold=True))
+            label.setFont(make_diagram_font(14, bold=True))
             label.setDefaultTextColor(QColor("#374151"))
             label.setZValue(-2)
             label.setPos(rect.left() + 8, rect.top() + 4)
