@@ -483,27 +483,52 @@ class DependencyView(QGraphicsView):
     def __init__(self, scene, app_window):
         super().__init__(scene)
         self.app_window = app_window
+        self.is_panning = False
+        self.last_pan_pos = None
         self.setRenderHint(QPainter.Antialiasing)
         self.setRenderHint(QPainter.TextAntialiasing)
-        self.setDragMode(QGraphicsView.RubberBandDrag)
+        self.setDragMode(QGraphicsView.NoDrag)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             item = self.itemAt(event.position().toPoint())
-            if self.app_window.task_node_for_item(item) is None and self.app_window.handle_canvas_empty_click():
+            if self.app_window.task_node_for_item(item) is None:
+                self.app_window.handle_canvas_empty_click()
+                if not self.app_window.is_dependency_pick_mode:
+                    self.is_panning = True
+                    self.last_pan_pos = event.position()
+                    self.setCursor(Qt.ClosedHandCursor)
+                    event.accept()
+                    return
                 event.accept()
                 return
         super().mousePressEvent(event)
 
-    def wheelEvent(self, event):
-        if event.modifiers() & Qt.ControlModifier:
-            factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
-            self.scale(factor, factor)
+    def mouseMoveEvent(self, event):
+        if self.is_panning and self.last_pan_pos is not None:
+            delta = event.position() - self.last_pan_pos
+            self.last_pan_pos = event.position()
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - int(delta.x()))
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - int(delta.y()))
             event.accept()
-        else:
-            super().wheelEvent(event)
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.is_panning:
+            self.is_panning = False
+            self.last_pan_pos = None
+            self.unsetCursor()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def wheelEvent(self, event):
+        factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
+        self.scale(factor, factor)
+        event.accept()
 
 
 class MainWindow(QMainWindow):
