@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from PySide6.QtCore import QPointF, QRectF, QSettings, Qt
-from PySide6.QtGui import QAction, QBrush, QColor, QIcon, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF
+from PySide6.QtGui import QAction, QBrush, QColor, QFont, QIcon, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -55,6 +55,15 @@ WINDOWS_APP_ID = "pyTaskFlow.app"
 SETTINGS_ORG = "pyTaskFlow"
 SETTINGS_APP = "pyTaskFlow"
 LAST_PROJECT_FILE_KEY = "lastProjectFile"
+DIAGRAM_FONT_FAMILIES = ["Yu Gothic UI", "Meiryo UI", "Meiryo", "Noto Sans CJK JP", "Segoe UI", "Arial"]
+
+
+def make_diagram_font(point_size=10, *, bold=False) -> QFont:
+    font = QFont()
+    font.setFamilies(DIAGRAM_FONT_FAMILIES)
+    font.setPointSize(point_size)
+    font.setBold(bold)
+    return font
 
 
 def load_app_icon() -> QIcon:
@@ -237,6 +246,7 @@ class ResourceTextItem(QGraphicsTextItem):
     def __init__(self, text: str, artifact: dict, parent=None):
         super().__init__(text, parent)
         self.artifact = artifact
+        self.setFont(make_diagram_font(10))
         self.setDefaultTextColor(QColor("#1F2937"))
         self.setTextWidth(TaskNodeItem.WIDTH - 22)
         if get_artifact_link(artifact):
@@ -252,11 +262,11 @@ class ResourceTextItem(QGraphicsTextItem):
 
 
 class TaskNodeItem(QGraphicsRectItem):
-    WIDTH = 180
-    HEIGHT = 96
-    RESOURCE_LINE_HEIGHT = 22
-    RESOURCE_SECTION_HEIGHT = 20
-    RESOURCE_BOTTOM_MARGIN = 10
+    WIDTH = 220
+    HEIGHT = 110
+    RESOURCE_LINE_HEIGHT = 25
+    RESOURCE_SECTION_HEIGHT = 23
+    RESOURCE_BOTTOM_MARGIN = 12
 
     def __init__(self, task: dict, app_window):
         super().__init__(0, 0, self.WIDTH, self.HEIGHT)
@@ -275,21 +285,24 @@ class TaskNodeItem(QGraphicsRectItem):
         self.setBrush(QBrush(STATUS_COLORS.get(task.get("status"), QColor("#FFFFFF"))))
 
         self.title_item = QGraphicsTextItem(self)
+        self.title_item.setFont(make_diagram_font(11, bold=True))
         self.title_item.setDefaultTextColor(QColor("#111827"))
         self.title_item.setTextWidth(self.WIDTH - 20)
         self.title_item.setPos(10, 8)
         self.title_item.setAcceptedMouseButtons(Qt.NoButton)
 
         self.subtitle_item = QGraphicsTextItem(self)
-        self.subtitle_item.setDefaultTextColor(QColor("#4B5563"))
+        self.subtitle_item.setFont(make_diagram_font(10))
+        self.subtitle_item.setDefaultTextColor(QColor("#374151"))
         self.subtitle_item.setTextWidth(self.WIDTH - 20)
-        self.subtitle_item.setPos(10, 34)
+        self.subtitle_item.setPos(10, 40)
         self.subtitle_item.setAcceptedMouseButtons(Qt.NoButton)
 
         self.artifact_item = QGraphicsTextItem(self)
+        self.artifact_item.setFont(make_diagram_font(10))
         self.artifact_item.setDefaultTextColor(QColor("#374151"))
         self.artifact_item.setTextWidth(self.WIDTH - 20)
-        self.artifact_item.setPos(10, 60)
+        self.artifact_item.setPos(10, 70)
         self.artifact_item.setAcceptedMouseButtons(Qt.NoButton)
 
         self.refresh_text()
@@ -351,6 +364,7 @@ class TaskNodeItem(QGraphicsRectItem):
         sections = [(title, artifacts) for title, artifacts in self.resource_sections() if artifacts]
         if not sections:
             item = QGraphicsTextItem("関連リソースなし", self)
+            item.setFont(make_diagram_font(10))
             item.setDefaultTextColor(QColor("#6B7280"))
             item.setTextWidth(self.WIDTH - 22)
             item.setPos(10, y)
@@ -360,6 +374,7 @@ class TaskNodeItem(QGraphicsRectItem):
         else:
             for title, artifacts in sections:
                 header = QGraphicsTextItem(title, self)
+                header.setFont(make_diagram_font(10, bold=True))
                 header.setDefaultTextColor(QColor("#111827"))
                 header.setTextWidth(self.WIDTH - 22)
                 header.setPos(10, y)
@@ -469,6 +484,7 @@ class DependencyView(QGraphicsView):
         super().__init__(scene)
         self.app_window = app_window
         self.setRenderHint(QPainter.Antialiasing)
+        self.setRenderHint(QPainter.TextAntialiasing)
         self.setDragMode(QGraphicsView.RubberBandDrag)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
@@ -491,9 +507,9 @@ class DependencyView(QGraphicsView):
 
 
 class MainWindow(QMainWindow):
-    COLUMN_SPACING = 300
-    ROW_SPACING = 130
-    NODE_VERTICAL_GAP = 24
+    COLUMN_SPACING = 340
+    ROW_SPACING = 150
+    NODE_VERTICAL_GAP = 32
 
     def __init__(self):
         super().__init__()
@@ -503,6 +519,7 @@ class MainWindow(QMainWindow):
 
         self.scene = QGraphicsScene(self)
         self.scene.setSceneRect(QRectF(-1000, -1000, 5000, 4000))
+        self.scene.setBackgroundBrush(QBrush(QColor("#F8FAFC")))
         self.view = DependencyView(self.scene, self)
         self.setCentralWidget(self.view)
 
@@ -1225,6 +1242,7 @@ class MainWindow(QMainWindow):
             self.group_items.append(group_rect)
 
             label = QGraphicsTextItem(group)
+            label.setFont(make_diagram_font(10, bold=True))
             label.setDefaultTextColor(QColor("#374151"))
             label.setZValue(-2)
             label.setPos(rect.left() + 8, rect.top() + 4)
