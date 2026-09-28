@@ -263,7 +263,7 @@ class ResourceTextItem(QGraphicsTextItem):
 
 class TaskNodeItem(QGraphicsRectItem):
     WIDTH = 220
-    HEIGHT = 110
+    HEIGHT = 64
     RESOURCE_LINE_HEIGHT = 25
     RESOURCE_SECTION_HEIGHT = 23
     RESOURCE_BOTTOM_MARGIN = 12
@@ -285,25 +285,11 @@ class TaskNodeItem(QGraphicsRectItem):
         self.setBrush(QBrush(STATUS_COLORS.get(task.get("status"), QColor("#FFFFFF"))))
 
         self.title_item = QGraphicsTextItem(self)
-        self.title_item.setFont(make_diagram_font(11, bold=True))
+        self.title_item.setFont(make_diagram_font(12, bold=True))
         self.title_item.setDefaultTextColor(QColor("#111827"))
         self.title_item.setTextWidth(self.WIDTH - 20)
-        self.title_item.setPos(10, 8)
+        self.title_item.setPos(10, 12)
         self.title_item.setAcceptedMouseButtons(Qt.NoButton)
-
-        self.subtitle_item = QGraphicsTextItem(self)
-        self.subtitle_item.setFont(make_diagram_font(10))
-        self.subtitle_item.setDefaultTextColor(QColor("#374151"))
-        self.subtitle_item.setTextWidth(self.WIDTH - 20)
-        self.subtitle_item.setPos(10, 40)
-        self.subtitle_item.setAcceptedMouseButtons(Qt.NoButton)
-
-        self.artifact_item = QGraphicsTextItem(self)
-        self.artifact_item.setFont(make_diagram_font(10))
-        self.artifact_item.setDefaultTextColor(QColor("#374151"))
-        self.artifact_item.setTextWidth(self.WIDTH - 20)
-        self.artifact_item.setPos(10, 70)
-        self.artifact_item.setAcceptedMouseButtons(Qt.NoButton)
 
         self.refresh_text()
         self.setPos(float(task.get("x", 0)), float(task.get("y", 0)))
@@ -314,11 +300,6 @@ class TaskNodeItem(QGraphicsRectItem):
 
     def refresh_text(self):
         self.title_item.setPlainText(f'{self.task["id"]}  {self.task["name"]}')
-        self.subtitle_item.setPlainText(f'状態: {self.task.get("status", "未着手")}')
-        inputs = len(normalize_id_list(self.task.get("inputs")))
-        outputs = len(normalize_id_list(self.task.get("outputs")))
-        resources = len(normalize_id_list(self.task.get("resources")))
-        self.artifact_item.setPlainText(f"成果物  入:{inputs}  出:{outputs}  資料:{resources}")
         self.setBrush(QBrush(STATUS_COLORS.get(self.task.get("status"), QColor("#FFFFFF"))))
         if self.expanded:
             self.refresh_resources()
