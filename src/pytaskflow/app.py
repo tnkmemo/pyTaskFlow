@@ -532,6 +532,7 @@ class MainWindow(QMainWindow):
     COLUMN_SPACING = 420
     ROW_SPACING = 165
     NODE_VERTICAL_GAP = 32
+    SCENE_PADDING = 160
 
     def __init__(self):
         super().__init__()
@@ -540,7 +541,8 @@ class MainWindow(QMainWindow):
         self.resize(1250, 780)
 
         self.scene = QGraphicsScene(self)
-        self.scene.setSceneRect(QRectF(-1000, -1000, 5000, 4000))
+        self.default_scene_rect = QRectF(-1000, -1000, 5000, 4000)
+        self.scene.setSceneRect(self.default_scene_rect)
         self.scene.setBackgroundBrush(QBrush(QColor("#F8FAFC")))
         self.view = DependencyView(self.scene, self)
         self.setCentralWidget(self.view)
@@ -1271,8 +1273,11 @@ class MainWindow(QMainWindow):
             self.scene.addItem(label)
             self.group_items.append(label)
 
+        self.update_scene_rect()
+
     def clear_graph(self):
         self.scene.clear()
+        self.scene.setSceneRect(self.default_scene_rect)
         self.nodes.clear()
         self.edges.clear()
         self.group_items.clear()
@@ -1878,9 +1883,24 @@ class MainWindow(QMainWindow):
             4000,
         )
 
+    def update_scene_rect(self):
+        rect = self.scene.itemsBoundingRect()
+        if rect.isNull():
+            self.scene.setSceneRect(self.default_scene_rect)
+            return
+
+        padded_rect = rect.adjusted(
+            -self.SCENE_PADDING,
+            -self.SCENE_PADDING,
+            self.SCENE_PADDING,
+            self.SCENE_PADDING,
+        )
+        self.scene.setSceneRect(self.default_scene_rect.united(padded_rect))
+
     def fit_all(self):
         rect = self.scene.itemsBoundingRect()
         if not rect.isNull():
+            self.update_scene_rect()
             self.view.fitInView(rect.adjusted(-80, -80, 80, 80), Qt.KeepAspectRatio)
 
     def keyPressEvent(self, event):
