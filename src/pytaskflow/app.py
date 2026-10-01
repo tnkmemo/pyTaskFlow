@@ -1,3 +1,4 @@
+import hashlib
 import json
 import math
 import os
@@ -41,15 +42,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-STATUS_COLORS = {
-    "未着手": QColor("#E5E7EB"),
-    "進行中": QColor("#BFDBFE"),
-    "完了": QColor("#BBF7D0"),
-    "保留": QColor("#FDE68A"),
-}
-
-STATUS_OPTIONS = list(STATUS_COLORS.keys())
 GROUP_COLORS = ["#E0F2FE", "#DCFCE7", "#FEF3C7", "#FCE7F3", "#EDE9FE", "#CCFBF1", "#FFE4E6"]
+DEFAULT_TASK_COLOR = QColor("#FFFFFF")
 APP_ICON_RESOURCE = "assets/app_icon.svg"
 WINDOWS_APP_ID = "pyTaskFlow.app"
 SETTINGS_ORG = "pyTaskFlow"
@@ -131,6 +125,14 @@ def diagram_artifact_label(artifact: dict) -> str:
 
 def task_group(task: dict) -> str:
     return str(task.get("group", "")).strip()
+
+
+def group_color(group: str) -> QColor:
+    group = group.strip()
+    if not group:
+        return QColor(DEFAULT_TASK_COLOR)
+    digest = hashlib.blake2s(group.encode("utf-8"), digest_size=1).digest()
+    return QColor(GROUP_COLORS[digest[0] % len(GROUP_COLORS)])
 
 
 class EdgeItem(QGraphicsPathItem):
@@ -298,7 +300,7 @@ class TaskNodeItem(QGraphicsRectItem):
             | QGraphicsItem.ItemSendsGeometryChanges
         )
         self.setPen(QPen(QColor("#374151"), 1.5))
-        self.setBrush(QBrush(STATUS_COLORS.get(task.get("status"), QColor("#FFFFFF"))))
+        self.setBrush(QBrush(group_color(task_group(task))))
 
         self.title_item = QGraphicsTextItem(self)
         self.title_item.setFont(make_diagram_font(18, bold=True))
@@ -316,7 +318,7 @@ class TaskNodeItem(QGraphicsRectItem):
 
     def refresh_text(self):
         self.title_item.setPlainText(str(self.task.get("name", "")))
-        self.setBrush(QBrush(STATUS_COLORS.get(self.task.get("status"), QColor("#FFFFFF"))))
+        self.setBrush(QBrush(group_color(task_group(self.task))))
         if self.expanded:
             self.refresh_resources()
 
@@ -459,21 +461,9 @@ class TaskNodeItem(QGraphicsRectItem):
             action.setEnabled(bool(get_artifact_link(artifact)))
             artifact_actions[action] = artifact
 
-        status_menu = menu.addMenu("状態を変更")
-        status_actions = {}
-        for status in STATUS_COLORS:
-            action = status_menu.addAction(status)
-            action.setCheckable(True)
-            action.setChecked(self.task.get("status") == status)
-            status_actions[action] = status
-
         selected = menu.exec(event.screenPos())
         if selected in artifact_actions:
             open_link(get_artifact_link(artifact_actions[selected]))
-        elif selected in status_actions:
-            self.task["status"] = status_actions[selected]
-            self.refresh_text()
-            self.app_window.set_modified(True)
 
 
 class DependencyView(QGraphicsView):
@@ -549,7 +539,6 @@ class MainWindow(QMainWindow):
 
         self.nodes = {}
         self.edges = []
-        self.group_items = []
         self.tasks = {}
         self.artifacts = {}
         self.project = {"tasks": [], "artifacts": [], "dependencies": []}
@@ -676,8 +665,6 @@ class MainWindow(QMainWindow):
         form = QFormLayout(widget)
         self.task_id_edit = QLineEdit()
         self.task_name_edit = QLineEdit()
-        self.task_status_combo = QComboBox()
-        self.task_status_combo.addItems(STATUS_OPTIONS)
         self.task_group_combo = QComboBox()
         self.task_group_combo.setEditable(True)
         self.task_inputs_edit = QLineEdit()
@@ -688,7 +675,6 @@ class MainWindow(QMainWindow):
 
         form.addRow("ID", self.task_id_edit)
         form.addRow("Name", self.task_name_edit)
-        form.addRow("Status", self.task_status_combo)
         form.addRow("Group", self.task_group_combo)
         form.addRow("Inputs", self.task_inputs_edit)
         form.addRow("Outputs", self.task_outputs_edit)
@@ -704,7 +690,6 @@ class MainWindow(QMainWindow):
             self.task_resources_edit,
         ):
             widget_to_watch.editingFinished.connect(self.apply_task_form)
-        self.task_status_combo.currentTextChanged.connect(self.apply_task_form)
         self.task_group_combo.currentTextChanged.connect(self.apply_task_form)
         self.task_x_spin.valueChanged.connect(self.apply_task_form)
         self.task_y_spin.valueChanged.connect(self.apply_task_form)
@@ -890,8 +875,6 @@ class MainWindow(QMainWindow):
         self.form_stack.setCurrentIndex(1)
         self.task_id_edit.setText(str(task.get("id", "")))
         self.task_name_edit.setText(str(task.get("name", "")))
-        status = str(task.get("status", STATUS_OPTIONS[0]))
-        self.task_status_combo.setCurrentText(status if status in STATUS_OPTIONS else STATUS_OPTIONS[0])
         self.task_group_combo.setCurrentText(task_group(task))
         self.task_inputs_edit.setText(self.id_list_to_text(task.get("inputs")))
         self.task_outputs_edit.setText(self.id_list_to_text(task.get("outputs")))
@@ -958,7 +941,6 @@ class MainWindow(QMainWindow):
         task = {
             "id": task_id,
             "name": "New Task",
-            "status": STATUS_OPTIONS[0],
             "group": "",
             "inputs": [],
             "outputs": [],
@@ -1070,12 +1052,12 @@ class MainWindow(QMainWindow):
 
         task["id"] = new_id
         task["name"] = self.task_name_edit.text().strip()
-        task["status"] = self.task_status_combo.currentText()
         group = self.task_group_combo.currentText().strip()
         if group:
             task["group"] = group
         else:
             task.pop("group", None)
+        task.pop("status", None)
         task.pop("link", None)
         task.pop("folder", None)
         task["inputs"] = self.text_to_id_list(self.task_inputs_edit.text())
@@ -1225,54 +1207,7 @@ class MainWindow(QMainWindow):
         self.update_group_items()
         self.fit_all()
 
-    def clear_group_items(self):
-        for item in self.group_items:
-            if item.scene() is not None:
-                item.scene().removeItem(item)
-        self.group_items = []
-
     def update_group_items(self):
-        if not hasattr(self, "scene"):
-            return
-
-        self.clear_group_items()
-        grouped_nodes = defaultdict(list)
-        for node in self.nodes.values():
-            group = task_group(node.task)
-            if group:
-                grouped_nodes[group].append(node)
-
-        for index, group in enumerate(sorted(grouped_nodes)):
-            nodes = grouped_nodes[group]
-            if not nodes:
-                continue
-
-            rect = nodes[0].sceneBoundingRect()
-            for node in nodes[1:]:
-                rect = rect.united(node.sceneBoundingRect())
-
-            rect = rect.adjusted(-28, -34, 28, 28)
-            base_color = QColor(GROUP_COLORS[index % len(GROUP_COLORS)])
-            fill_color = QColor(base_color)
-            fill_color.setAlpha(70)
-            pen_color = QColor(base_color)
-            pen_color.setAlpha(210)
-
-            group_rect = QGraphicsRectItem(rect)
-            group_rect.setZValue(-3)
-            group_rect.setBrush(QBrush(fill_color))
-            group_rect.setPen(QPen(pen_color, 1.5, Qt.DashLine))
-            self.scene.addItem(group_rect)
-            self.group_items.append(group_rect)
-
-            label = QGraphicsTextItem(group)
-            label.setFont(make_diagram_font(14, bold=True))
-            label.setDefaultTextColor(QColor("#374151"))
-            label.setZValue(-2)
-            label.setPos(rect.left() + 8, rect.top() + 4)
-            self.scene.addItem(label)
-            self.group_items.append(label)
-
         self.update_scene_rect()
 
     def clear_graph(self):
@@ -1280,7 +1215,6 @@ class MainWindow(QMainWindow):
         self.scene.setSceneRect(self.default_scene_rect)
         self.nodes.clear()
         self.edges.clear()
-        self.group_items.clear()
         self.tasks.clear()
         self.artifacts.clear()
         self.expanded_node = None
@@ -1534,6 +1468,7 @@ class MainWindow(QMainWindow):
 
     def remove_removed_fields(self):
         for task in self.project.get("tasks", []):
+            task.pop("status", None)
             task.pop("link", None)
             task.pop("folder", None)
         for artifact in self.project.get("artifacts", []):
