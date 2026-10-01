@@ -283,7 +283,9 @@ class TaskNodeItem(QGraphicsRectItem):
     WIDTH = 280
     HEIGHT = 96
     RESOURCE_LINE_HEIGHT = 36
-    RESOURCE_SECTION_HEIGHT = 34
+    RESOURCE_BADGE_WIDTH = 24
+    RESOURCE_BADGE_HEIGHT = 22
+    RESOURCE_BADGE_GAP = 8
     RESOURCE_BOTTOM_MARGIN = 12
 
     def __init__(self, task: dict, app_window):
@@ -359,10 +361,32 @@ class TaskNodeItem(QGraphicsRectItem):
 
     def resource_sections(self):
         return [
-            ("入力", self.app_window.get_task_artifacts(self.task, "inputs")),
-            ("出力", self.app_window.get_task_artifacts(self.task, "outputs")),
-            ("資料", self.app_window.get_task_artifacts(self.task, "resources")),
+            ("i", self.app_window.get_task_artifacts(self.task, "inputs")),
+            ("o", self.app_window.get_task_artifacts(self.task, "outputs")),
+            ("m", self.app_window.get_task_artifacts(self.task, "resources")),
         ]
+
+    def add_resource_badge(self, prefix: str, y: float):
+        badge_x = 10
+        badge_y = y + 3
+
+        badge = QGraphicsRectItem(0, 0, self.RESOURCE_BADGE_WIDTH, self.RESOURCE_BADGE_HEIGHT, self)
+        badge.setBrush(QBrush(QColor("#F3F4F6")))
+        badge.setPen(QPen(Qt.NoPen))
+        badge.setPos(badge_x, badge_y)
+        badge.setAcceptedMouseButtons(Qt.NoButton)
+        self.resource_items.append(badge)
+
+        label = QGraphicsTextItem(prefix, self)
+        label.setFont(make_diagram_font(12))
+        label.setDefaultTextColor(QColor("#374151"))
+        label_rect = label.boundingRect()
+        label.setPos(
+            badge_x + (self.RESOURCE_BADGE_WIDTH - label_rect.width()) / 2,
+            badge_y + (self.RESOURCE_BADGE_HEIGHT - label_rect.height()) / 2 - 1,
+        )
+        label.setAcceptedMouseButtons(Qt.NoButton)
+        self.resource_items.append(label)
 
     def refresh_resources(self):
         self.clear_resource_items()
@@ -379,19 +403,13 @@ class TaskNodeItem(QGraphicsRectItem):
             self.resource_items.append(item)
             y += self.RESOURCE_LINE_HEIGHT
         else:
-            for title, artifacts in sections:
-                header = QGraphicsTextItem(title, self)
-                header.setFont(make_diagram_font(14))
-                header.setDefaultTextColor(QColor("#111827"))
-                header.setTextWidth(self.WIDTH - 22)
-                header.setPos(10, y)
-                header.setAcceptedMouseButtons(Qt.NoButton)
-                self.resource_items.append(header)
-                y += self.RESOURCE_SECTION_HEIGHT
-
+            for prefix, artifacts in sections:
                 for artifact in artifacts:
-                    item = ResourceTextItem(f"- {diagram_artifact_label(artifact)}", artifact, self)
-                    item.setPos(14, y)
+                    self.add_resource_badge(prefix, y)
+                    item = ResourceTextItem(diagram_artifact_label(artifact), artifact, self)
+                    text_x = 10 + self.RESOURCE_BADGE_WIDTH + self.RESOURCE_BADGE_GAP
+                    item.setTextWidth(self.WIDTH - text_x - 10)
+                    item.setPos(text_x, y)
                     self.resource_items.append(item)
                     y += self.RESOURCE_LINE_HEIGHT
 
