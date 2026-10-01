@@ -299,7 +299,7 @@ class TaskNodeItem(QGraphicsRectItem):
             | QGraphicsItem.ItemIsSelectable
             | QGraphicsItem.ItemSendsGeometryChanges
         )
-        self.setPen(QPen(QColor("#374151"), 1.5))
+        self.setPen(QPen(Qt.NoPen))
         self.setBrush(QBrush(group_color(task_group(task))))
 
         self.title_item = QGraphicsTextItem(self)
@@ -341,7 +341,7 @@ class TaskNodeItem(QGraphicsRectItem):
         elif self.isSelected():
             self.setPen(QPen(QColor("#111827"), 2.5))
         else:
-            self.setPen(QPen(QColor("#374151"), 1.5))
+            self.setPen(QPen(Qt.NoPen))
 
     def add_edge(self, edge):
         self.edges.append(edge)
