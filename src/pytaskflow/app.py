@@ -306,7 +306,6 @@ class TaskNodeItem(QGraphicsRectItem):
         self.title_item.setFont(make_diagram_font(18))
         self.title_item.setDefaultTextColor(QColor("#111827"))
         self.title_item.setTextWidth(self.WIDTH - 20)
-        self.title_item.setPos(10, 18)
         self.title_item.setAcceptedMouseButtons(Qt.NoButton)
 
         self.refresh_text()
@@ -318,9 +317,18 @@ class TaskNodeItem(QGraphicsRectItem):
 
     def refresh_text(self):
         self.title_item.setPlainText(str(self.task.get("name", "")))
+        self.update_title_position()
         self.setBrush(QBrush(group_color(task_group(self.task))))
         if self.expanded:
             self.refresh_resources()
+
+    def update_title_position(self):
+        if self.expanded:
+            y = 18
+        else:
+            title_height = self.title_item.boundingRect().height()
+            y = max(8, (self.HEIGHT - title_height) / 2)
+        self.title_item.setPos(10, y)
 
     def refresh_style(self):
         if self.app_window.dependency_source_id == self.task_id:
@@ -395,6 +403,7 @@ class TaskNodeItem(QGraphicsRectItem):
             return
 
         self.expanded = expanded
+        self.update_title_position()
         if expanded:
             self.refresh_resources()
         else:
