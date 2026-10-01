@@ -303,7 +303,7 @@ class TaskNodeItem(QGraphicsRectItem):
         self.setBrush(QBrush(group_color(task_group(task))))
 
         self.title_item = QGraphicsTextItem(self)
-        self.title_item.setFont(make_diagram_font(18, bold=True))
+        self.title_item.setFont(make_diagram_font(18))
         self.title_item.setDefaultTextColor(QColor("#111827"))
         self.title_item.setTextWidth(self.WIDTH - 20)
         self.title_item.setPos(10, 18)
@@ -373,7 +373,7 @@ class TaskNodeItem(QGraphicsRectItem):
         else:
             for title, artifacts in sections:
                 header = QGraphicsTextItem(title, self)
-                header.setFont(make_diagram_font(14, bold=True))
+                header.setFont(make_diagram_font(14))
                 header.setDefaultTextColor(QColor("#111827"))
                 header.setTextWidth(self.WIDTH - 22)
                 header.setPos(10, y)
