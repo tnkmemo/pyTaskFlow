@@ -143,7 +143,8 @@ class EdgeItem(QGraphicsPathItem):
         self.dependency = dependency
         self.app_window = app_window
         self.hovered = False
-        self.default_color = QColor("#4B5563")
+        self.default_color = QColor("#CBD5E1")
+        self.highlight_color = QColor("#2563EB")
         self.selected_color = QColor("#2563EB")
         self.hover_color = QColor("#111827")
         self.setZValue(-1)
@@ -172,6 +173,12 @@ class EdgeItem(QGraphicsPathItem):
     def label(self) -> str:
         return f"{self.dependency.get('from', '')} -> {self.dependency.get('to', '')}"
 
+    def is_connected_to_selected_task(self) -> bool:
+        selected_task_id = self.app_window.selected_task_id()
+        if selected_task_id is None:
+            return False
+        return selected_task_id in {str(self.source_node.task_id), str(self.target_node.task_id)}
+
     def refresh_style(self):
         if self.isSelected():
             color = self.selected_color
@@ -179,9 +186,12 @@ class EdgeItem(QGraphicsPathItem):
         elif self.hovered:
             color = self.hover_color
             width = 3
+        elif self.is_connected_to_selected_task():
+            color = self.highlight_color
+            width = 3
         else:
             color = self.default_color
-            width = 2
+            width = 1.4
         self.setPen(QPen(color, width))
 
     def shape(self):
@@ -944,6 +954,8 @@ class MainWindow(QMainWindow):
             self.populate_selected_form()
         finally:
             self._updating_editor = False
+        self.refresh_edge_styles()
+        self.refresh_dependency_pick_styles()
 
     def on_task_item_selected(self, current, previous):
         self.select_editor_item("task", current)
@@ -1250,7 +1262,17 @@ class MainWindow(QMainWindow):
         self.selected_kind = "task"
         self.selected_id = node.task_id
         self.refresh_editor()
+        self.refresh_edge_styles()
         self.refresh_dependency_pick_styles()
+
+    def selected_task_id(self) -> str | None:
+        if self.selected_kind != "task" or self.selected_id is None:
+            return None
+        return str(self.selected_id)
+
+    def refresh_edge_styles(self):
+        for edge in self.edges:
+            edge.refresh_style()
 
     def find_dependency_index_for_edge(self, edge: EdgeItem):
         dependencies = self.project.get("dependencies", [])
@@ -1273,6 +1295,7 @@ class MainWindow(QMainWindow):
         self.selected_kind = "dependency"
         self.selected_id = index
         self.refresh_editor()
+        self.refresh_edge_styles()
         return True
 
     def delete_dependency_edge(self, edge: EdgeItem) -> bool:
@@ -1323,12 +1346,14 @@ class MainWindow(QMainWindow):
             return
         for node in self.nodes.values():
             node.refresh_style()
+        self.refresh_edge_styles()
 
     def clear_current_selection(self):
         self.scene.clearSelection()
         self.selected_kind = None
         self.selected_id = None
         self.refresh_editor()
+        self.refresh_edge_styles()
         self.refresh_dependency_pick_styles()
 
     def clear_dependency_source(self):
