@@ -115,7 +115,6 @@ python main.py
     {
       "id": "T01",
       "name": "Requirements",
-      "status": "未着手",
       "group": "Planning",
       "inputs": [],
       "outputs": ["A01"],
@@ -144,7 +143,6 @@ python main.py
 
 - `id`: タスク ID。依存関係から参照されます。
 - `name`: タスク名。
-- `status`: ステータス。色分け表示に使われます。
 - `group`: グループ名。グループごとに背景色付きの帯で表示されます。
 - `inputs`: 入力成果物 ID の配列。
 - `outputs`: 出力成果物 ID の配列。
