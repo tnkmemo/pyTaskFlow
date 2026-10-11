@@ -42,8 +42,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-GROUP_COLORS = ["#E0F2FE", "#DCFCE7", "#FEF3C7", "#FCE7F3", "#EDE9FE", "#CCFBF1", "#FFE4E6"]
-DEFAULT_TASK_COLOR = QColor("#FFFFFF")
+GROUP_COLORS = ["#B45309", "#0369A1", "#047857", "#854D0E", "#6D28D9", "#0F766E", "#BE185D"]
+DEFAULT_TASK_COLOR = QColor("#334155")
+TASK_BORDER_COLOR = QColor("#E2E8F0")
+TASK_TEXT_COLOR = QColor("#FFFFFF")
+TASK_MUTED_TEXT_COLOR = QColor("#E2E8F0")
+SCENE_BACKGROUND_COLOR = QColor("#F1F5F9")
 APP_ICON_RESOURCE = "assets/app_icon.svg"
 WINDOWS_APP_ID = "pyTaskFlow.app"
 SETTINGS_ORG = "pyTaskFlow"
@@ -263,7 +267,7 @@ class ResourceTextItem(QGraphicsTextItem):
         super().__init__(text, parent)
         self.artifact = artifact
         self.setFont(make_diagram_font(14))
-        self.setDefaultTextColor(QColor("#1F2937"))
+        self.setDefaultTextColor(TASK_TEXT_COLOR)
         self.setTextWidth(TaskNodeItem.WIDTH - 22)
         if get_artifact_link(artifact):
             self.setCursor(Qt.PointingHandCursor)
@@ -311,12 +315,12 @@ class TaskNodeItem(QGraphicsRectItem):
             | QGraphicsItem.ItemIsSelectable
             | QGraphicsItem.ItemSendsGeometryChanges
         )
-        self.setPen(QPen(Qt.NoPen))
+        self.setPen(QPen(TASK_BORDER_COLOR, 1))
         self.setBrush(QBrush(group_color(task_group(task))))
 
         self.title_item = QGraphicsTextItem(self)
         self.title_item.setFont(make_diagram_font(18))
-        self.title_item.setDefaultTextColor(QColor("#111827"))
+        self.title_item.setDefaultTextColor(TASK_TEXT_COLOR)
         self.title_item.setTextWidth(self.WIDTH - 20)
         self.title_item.setAcceptedMouseButtons(Qt.NoButton)
 
@@ -353,7 +357,7 @@ class TaskNodeItem(QGraphicsRectItem):
         elif self.isSelected():
             self.setPen(QPen(QColor("#111827"), 2.5))
         else:
-            self.setPen(QPen(Qt.NoPen))
+            self.setPen(QPen(TASK_BORDER_COLOR, 1))
 
     def add_edge(self, edge):
         self.edges.append(edge)
@@ -406,7 +410,7 @@ class TaskNodeItem(QGraphicsRectItem):
         if not sections:
             item = QGraphicsTextItem("関連リソースなし", self)
             item.setFont(make_diagram_font(14))
-            item.setDefaultTextColor(QColor("#6B7280"))
+            item.setDefaultTextColor(TASK_MUTED_TEXT_COLOR)
             item.setTextWidth(self.WIDTH - 22)
             item.setPos(10, y)
             item.setAcceptedMouseButtons(Qt.NoButton)
@@ -570,7 +574,7 @@ class MainWindow(QMainWindow):
         self.scene = QGraphicsScene(self)
         self.default_scene_rect = QRectF(-1000, -1000, 5000, 4000)
         self.scene.setSceneRect(self.default_scene_rect)
-        self.scene.setBackgroundBrush(QBrush(QColor("#F8FAFC")))
+        self.scene.setBackgroundBrush(QBrush(SCENE_BACKGROUND_COLOR))
         self.view = DependencyView(self.scene, self)
         self.setCentralWidget(self.view)
 
