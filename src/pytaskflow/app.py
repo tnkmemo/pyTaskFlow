@@ -38,13 +38,14 @@ from PySide6.QtWidgets import (
     QStackedWidget,
     QTabWidget,
     QToolBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
-GROUP_COLORS = ["#FDE68A", "#BAE6FD", "#A7F3D0", "#FED7AA", "#DDD6FE", "#99F6E4", "#FBCFE8"]
+GROUP_COLORS = ["#B45309", "#0369A1", "#047857", "#854D0E", "#6D28D9", "#0F766E", "#BE185D"]
 DEFAULT_TASK_COLOR = QColor("#334155")
-TASK_BORDER_COLOR = QColor("#E2E8F0")
+TASK_BORDER_COLOR = QColor("#CBD5E1")
 TASK_TEXT_COLOR = QColor("#000000")
 TASK_MUTED_TEXT_COLOR = QColor("#000000")
 SCENE_BACKGROUND_COLOR = QColor("#F1F5F9")
@@ -139,6 +140,44 @@ def group_color(group: str) -> QColor:
     return QColor(GROUP_COLORS[digest[0] % len(GROUP_COLORS)])
 
 
+class GroupSummaryItem(QGraphicsRectItem):
+    def __init__(self, group: str, task_count: int, app_window):
+        super().__init__(0, 0, TaskNodeItem.WIDTH, TaskNodeItem.HEIGHT)
+        self.group = group
+        self.task_count = task_count
+        self.app_window = app_window
+        self.setBrush(QBrush(QColor("#FFFFFF")))
+        self.setPen(QPen(TASK_BORDER_COLOR, 1))
+        self.setCursor(Qt.PointingHandCursor)
+        self.setToolTip(f"{group}: {task_count} 個のブロックを折りたたみ中\nダブルクリックで展開")
+
+    def paint(self, painter, option, widget=None):
+        super().paint(painter, option, widget)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(group_color(self.group)))
+        painter.drawRect(QRectF(0, 0, TaskNodeItem.GROUP_BAND_WIDTH, self.rect().height()))
+
+        text_rect = self.rect().adjusted(TaskNodeItem.GROUP_BAND_WIDTH + 8, 0, -8, 0)
+        painter.setPen(TASK_TEXT_COLOR)
+        painter.setFont(make_diagram_font(14))
+        painter.drawText(
+            text_rect,
+            Qt.AlignCenter | Qt.TextWordWrap,
+            f"{self.group}\n{self.task_count} 個のブロック（ダブルクリックで展開）",
+        )
+
+    def mousePressEvent(self, event):
+        event.accept()
+
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.app_window.set_group_collapsed(self.group, False)
+            self.app_window.refresh_collapse_menu()
+            event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
+
+
 class EdgeItem(QGraphicsPathItem):
     def __init__(self, source_node, target_node, dependency: dict, app_window):
         super().__init__()
@@ -160,8 +199,15 @@ class EdgeItem(QGraphicsPathItem):
         self.update_path()
 
     def update_path(self):
-        src_rect = self.source_node.sceneBoundingRect()
-        dst_rect = self.target_node.sceneBoundingRect()
+        source = self.app_window.visible_node_for_task(self.source_node)
+        target = self.app_window.visible_node_for_task(self.target_node)
+        if source is target:
+            self.setVisible(False)
+            return
+
+        self.setVisible(True)
+        src_rect = source.sceneBoundingRect()
+        dst_rect = target.sceneBoundingRect()
 
         p1 = QPointF(src_rect.right(), src_rect.center().y())
         p2 = QPointF(dst_rect.left(), dst_rect.center().y())
@@ -266,7 +312,7 @@ class ResourceTextItem(QGraphicsTextItem):
     def __init__(self, text: str, artifact: dict, parent=None):
         super().__init__(text, parent)
         self.artifact = artifact
-        self.setFont(make_diagram_font(14, bold=True))
+        self.setFont(make_diagram_font(14))
         self.setDefaultTextColor(TASK_TEXT_COLOR)
         self.setTextWidth(TaskNodeItem.WIDTH - 22)
         if get_artifact_link(artifact):
@@ -296,6 +342,7 @@ class ResourceTextItem(QGraphicsTextItem):
 class TaskNodeItem(QGraphicsRectItem):
     WIDTH = 280
     HEIGHT = 96
+    GROUP_BAND_WIDTH = 8
     RESOURCE_LINE_HEIGHT = 36
     RESOURCE_BADGE_WIDTH = 24
     RESOURCE_BADGE_HEIGHT = 22
@@ -316,10 +363,14 @@ class TaskNodeItem(QGraphicsRectItem):
             | QGraphicsItem.ItemSendsGeometryChanges
         )
         self.setPen(QPen(TASK_BORDER_COLOR, 1))
-        self.setBrush(QBrush(group_color(task_group(task))))
+        self.setBrush(QBrush(QColor("#FFFFFF")))
+
+        self.group_band = QGraphicsRectItem(0, 0, self.GROUP_BAND_WIDTH, self.HEIGHT, self)
+        self.group_band.setPen(QPen(Qt.NoPen))
+        self.group_band.setBrush(QBrush(group_color(task_group(task))))
 
         self.title_item = QGraphicsTextItem(self)
-        self.title_item.setFont(make_diagram_font(18, bold=True))
+        self.title_item.setFont(make_diagram_font(18))
         self.title_item.setDefaultTextColor(TASK_TEXT_COLOR)
         self.title_item.setTextWidth(self.WIDTH - 20)
         self.title_item.setAcceptedMouseButtons(Qt.NoButton)
@@ -334,7 +385,7 @@ class TaskNodeItem(QGraphicsRectItem):
     def refresh_text(self):
         self.title_item.setPlainText(str(self.task.get("name", "")))
         self.update_title_position()
-        self.setBrush(QBrush(group_color(task_group(self.task))))
+        self.group_band.setBrush(QBrush(group_color(task_group(self.task))))
         if self.expanded:
             self.refresh_resources()
 
@@ -392,7 +443,7 @@ class TaskNodeItem(QGraphicsRectItem):
         self.resource_items.append(badge)
 
         label = QGraphicsTextItem(prefix, self)
-        label.setFont(make_diagram_font(12, bold=True))
+        label.setFont(make_diagram_font(12))
         label.setDefaultTextColor(QColor("#374151"))
         label_rect = label.boundingRect()
         label.setPos(
@@ -409,7 +460,7 @@ class TaskNodeItem(QGraphicsRectItem):
         sections = [(title, artifacts) for title, artifacts in self.resource_sections() if artifacts]
         if not sections:
             item = QGraphicsTextItem("関連リソースなし", self)
-            item.setFont(make_diagram_font(14, bold=True))
+            item.setFont(make_diagram_font(14))
             item.setDefaultTextColor(TASK_MUTED_TEXT_COLOR)
             item.setTextWidth(self.WIDTH - 22)
             item.setPos(10, y)
@@ -428,6 +479,7 @@ class TaskNodeItem(QGraphicsRectItem):
                     y += self.RESOURCE_LINE_HEIGHT
 
         self.setRect(0, 0, self.WIDTH, y + self.RESOURCE_BOTTOM_MARGIN)
+        self.group_band.setRect(0, 0, self.GROUP_BAND_WIDTH, self.rect().height())
         self.update_edges()
 
     def set_expanded(self, expanded: bool):
@@ -441,6 +493,7 @@ class TaskNodeItem(QGraphicsRectItem):
         else:
             self.clear_resource_items()
             self.setRect(0, 0, self.WIDTH, self.HEIGHT)
+            self.group_band.setRect(0, 0, self.GROUP_BAND_WIDTH, self.HEIGHT)
             self.update_edges()
 
     def itemChange(self, change, value):
@@ -522,7 +575,10 @@ class DependencyView(QGraphicsView):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             item = self.itemAt(event.position().toPoint())
-            if self.app_window.task_node_for_item(item) is None:
+            if (
+                self.app_window.task_node_for_item(item) is None
+                and self.app_window.group_summary_for_item(item) is None
+            ):
                 self.app_window.handle_canvas_empty_click()
                 if not self.app_window.is_dependency_pick_mode:
                     self.is_panning = True
@@ -580,6 +636,7 @@ class MainWindow(QMainWindow):
 
         self.nodes = {}
         self.edges = []
+        self.group_summaries = {}
         self.tasks = {}
         self.artifacts = {}
         self.project = {"tasks": [], "artifacts": [], "dependencies": []}
@@ -628,6 +685,17 @@ class MainWindow(QMainWindow):
         column_action.setToolTip("依存関係からX座標だけを自動配置し、Y座標は維持します")
         column_action.triggered.connect(self.auto_layout_columns_only)
         self.toolbar.addAction(column_action)
+
+        self.toolbar.addSeparator()
+
+        self.collapse_menu = QMenu(self)
+        self.collapse_button = QToolButton()
+        self.collapse_button.setText("サブフロー")
+        self.collapse_button.setToolTip("グループ単位でブロックを折りたたみます")
+        self.collapse_button.setPopupMode(QToolButton.InstantPopup)
+        self.collapse_button.setMenu(self.collapse_menu)
+        self.toolbar.addWidget(self.collapse_button)
+        self.refresh_collapse_menu()
 
         self.toolbar.addSeparator()
 
@@ -816,6 +884,103 @@ class MainWindow(QMainWindow):
     def group_names(self) -> list[str]:
         return sorted({task_group(task) for task in self.project.get("tasks", []) if task_group(task)})
 
+    def refresh_collapse_menu(self):
+        self.collapse_menu.clear()
+        groups = self.group_names()
+        if not groups:
+            action = self.collapse_menu.addAction("グループなし")
+            action.setEnabled(False)
+        else:
+            collapsed_groups = set(self.project.get("collapsed_groups", []))
+            for group in groups:
+                action = self.collapse_menu.addAction(group)
+                action.setCheckable(True)
+                action.setChecked(group in collapsed_groups)
+                action.toggled.connect(
+                    lambda collapsed, group=group: self.set_group_collapsed(group, collapsed)
+                )
+            self.collapse_menu.addSeparator()
+            expand_action = self.collapse_menu.addAction("すべて展開")
+            expand_action.triggered.connect(lambda: self.expand_all_groups())
+
+    def visible_node_for_task(self, node):
+        group = task_group(node.task)
+        if group in self.group_summaries:
+            return self.group_summaries[group]
+        return node
+
+    def group_summary_for_item(self, item):
+        while item is not None:
+            if isinstance(item, GroupSummaryItem):
+                return item
+            item = item.parentItem()
+        return None
+
+    def apply_collapsed_groups(self):
+        for summary in self.group_summaries.values():
+            self.scene.removeItem(summary)
+        self.group_summaries.clear()
+
+        grouped_nodes = defaultdict(list)
+        for node in self.nodes.values():
+            node.setVisible(True)
+            group = task_group(node.task)
+            if group:
+                grouped_nodes[group].append(node)
+
+        stored_groups = self.project.get("collapsed_groups", [])
+        collapsed_groups = set()
+        if isinstance(stored_groups, list):
+            collapsed_groups = {
+                group
+                for group in stored_groups
+                if isinstance(group, str) and group in grouped_nodes
+            }
+        if collapsed_groups:
+            self.project["collapsed_groups"] = sorted(collapsed_groups)
+        else:
+            self.project.pop("collapsed_groups", None)
+
+        for group in collapsed_groups:
+            members = grouped_nodes.get(group, [])
+            if not members:
+                continue
+            summary = GroupSummaryItem(group, len(members), self)
+            summary.setPos(
+                sum(node.pos().x() for node in members) / len(members),
+                sum(node.pos().y() for node in members) / len(members),
+            )
+            self.scene.addItem(summary)
+            self.group_summaries[group] = summary
+            for node in members:
+                node.setVisible(False)
+
+        for edge in self.edges:
+            edge.update_path()
+
+    def set_group_collapsed(self, group: str, collapsed: bool):
+        collapsed_groups = set(self.project.get("collapsed_groups", []))
+        if collapsed:
+            collapsed_groups.add(group)
+        else:
+            collapsed_groups.discard(group)
+
+        if collapsed_groups:
+            self.project["collapsed_groups"] = sorted(collapsed_groups)
+        else:
+            self.project.pop("collapsed_groups", None)
+        self.apply_collapsed_groups()
+        self.update_group_items()
+        self.set_modified(True)
+
+    def expand_all_groups(self):
+        if self.project.pop("collapsed_groups", None) is None:
+            return
+        self.apply_collapsed_groups()
+        self.update_group_items()
+        self.refresh_collapse_menu()
+        self.set_modified(True)
+
     def next_id(self, prefix: str, existing_ids) -> str:
         used = {str(item_id) for item_id in existing_ids}
         index = 1
@@ -846,6 +1011,9 @@ class MainWindow(QMainWindow):
     def refresh_editor(self):
         if not hasattr(self, "task_list"):
             return
+
+        if hasattr(self, "collapse_menu"):
+            self.refresh_collapse_menu()
 
         current_kind = self.selected_kind
         current_id = self.selected_id
@@ -1244,6 +1412,7 @@ class MainWindow(QMainWindow):
                     source.add_edge(edge)
                     target.add_edge(edge)
                     self.edges.append(edge)
+            self.apply_collapsed_groups()
         finally:
             self._layout_in_progress = False
 
@@ -1258,6 +1427,7 @@ class MainWindow(QMainWindow):
         self.scene.setSceneRect(self.default_scene_rect)
         self.nodes.clear()
         self.edges.clear()
+        self.group_summaries.clear()
         self.tasks.clear()
         self.artifacts.clear()
         self.expanded_node = None
@@ -1507,6 +1677,7 @@ class MainWindow(QMainWindow):
             self._layout_in_progress = False
 
         if changed:
+            self.apply_collapsed_groups()
             for edge in self.edges:
                 edge.update_path()
             self.update_group_items()
@@ -1562,6 +1733,21 @@ class MainWindow(QMainWindow):
                     source.add_edge(edge)
                     target.add_edge(edge)
                     self.edges.append(edge)
+            collapsed_groups = project.get("collapsed_groups", [])
+            if isinstance(collapsed_groups, list):
+                valid_groups = set(self.group_names())
+                project["collapsed_groups"] = sorted(
+                    {
+                        str(group)
+                        for group in collapsed_groups
+                        if isinstance(group, str) and group in valid_groups
+                    }
+                )
+                if not project["collapsed_groups"]:
+                    project.pop("collapsed_groups", None)
+            else:
+                project.pop("collapsed_groups", None)
+            self.apply_collapsed_groups()
         finally:
             self._layout_in_progress = False
 
@@ -1832,6 +2018,7 @@ class MainWindow(QMainWindow):
                 node.task["x"] = x
                 node.task["y"] = y
 
+            self.apply_collapsed_groups()
             for edge in self.edges:
                 edge.update_path()
             self.update_group_items()
@@ -1861,6 +2048,7 @@ class MainWindow(QMainWindow):
                 node.task["x"] = x
                 node.task["y"] = y
 
+            self.apply_collapsed_groups()
             for edge in self.edges:
                 edge.update_path()
             self.update_group_items()
@@ -1874,8 +2062,19 @@ class MainWindow(QMainWindow):
             4000,
         )
 
+    def visible_items_bounding_rect(self) -> QRectF:
+        rect = QRectF()
+        has_rect = False
+        for item in self.scene.items():
+            if not item.isVisible():
+                continue
+            item_rect = item.sceneBoundingRect()
+            rect = rect.united(item_rect) if has_rect else item_rect
+            has_rect = True
+        return rect
+
     def update_scene_rect(self):
-        rect = self.scene.itemsBoundingRect()
+        rect = self.visible_items_bounding_rect()
         if rect.isNull():
             self.scene.setSceneRect(self.default_scene_rect)
             return
@@ -1889,7 +2088,7 @@ class MainWindow(QMainWindow):
         self.scene.setSceneRect(self.default_scene_rect.united(padded_rect))
 
     def fit_all(self):
-        rect = self.scene.itemsBoundingRect()
+        rect = self.visible_items_bounding_rect()
         if not rect.isNull():
             self.update_scene_rect()
             self.view.fitInView(rect.adjusted(-80, -80, 80, 80), Qt.KeepAspectRatio)
