@@ -42,11 +42,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-GROUP_COLORS = ["#B45309", "#0369A1", "#047857", "#854D0E", "#6D28D9", "#0F766E", "#BE185D"]
+GROUP_COLORS = ["#FDE68A", "#BAE6FD", "#A7F3D0", "#FED7AA", "#DDD6FE", "#99F6E4", "#FBCFE8"]
 DEFAULT_TASK_COLOR = QColor("#334155")
 TASK_BORDER_COLOR = QColor("#E2E8F0")
-TASK_TEXT_COLOR = QColor("#FFFFFF")
-TASK_MUTED_TEXT_COLOR = QColor("#E2E8F0")
+TASK_TEXT_COLOR = QColor("#000000")
+TASK_MUTED_TEXT_COLOR = QColor("#000000")
 SCENE_BACKGROUND_COLOR = QColor("#F1F5F9")
 APP_ICON_RESOURCE = "assets/app_icon.svg"
 WINDOWS_APP_ID = "pyTaskFlow.app"
@@ -266,7 +266,7 @@ class ResourceTextItem(QGraphicsTextItem):
     def __init__(self, text: str, artifact: dict, parent=None):
         super().__init__(text, parent)
         self.artifact = artifact
-        self.setFont(make_diagram_font(14))
+        self.setFont(make_diagram_font(14, bold=True))
         self.setDefaultTextColor(TASK_TEXT_COLOR)
         self.setTextWidth(TaskNodeItem.WIDTH - 22)
         if get_artifact_link(artifact):
@@ -319,7 +319,7 @@ class TaskNodeItem(QGraphicsRectItem):
         self.setBrush(QBrush(group_color(task_group(task))))
 
         self.title_item = QGraphicsTextItem(self)
-        self.title_item.setFont(make_diagram_font(18))
+        self.title_item.setFont(make_diagram_font(18, bold=True))
         self.title_item.setDefaultTextColor(TASK_TEXT_COLOR)
         self.title_item.setTextWidth(self.WIDTH - 20)
         self.title_item.setAcceptedMouseButtons(Qt.NoButton)
@@ -392,7 +392,7 @@ class TaskNodeItem(QGraphicsRectItem):
         self.resource_items.append(badge)
 
         label = QGraphicsTextItem(prefix, self)
-        label.setFont(make_diagram_font(12))
+        label.setFont(make_diagram_font(12, bold=True))
         label.setDefaultTextColor(QColor("#374151"))
         label_rect = label.boundingRect()
         label.setPos(
@@ -409,7 +409,7 @@ class TaskNodeItem(QGraphicsRectItem):
         sections = [(title, artifacts) for title, artifacts in self.resource_sections() if artifacts]
         if not sections:
             item = QGraphicsTextItem("関連リソースなし", self)
-            item.setFont(make_diagram_font(14))
+            item.setFont(make_diagram_font(14, bold=True))
             item.setDefaultTextColor(TASK_MUTED_TEXT_COLOR)
             item.setTextWidth(self.WIDTH - 22)
             item.setPos(10, y)
