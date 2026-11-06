@@ -696,6 +696,12 @@ class MainWindow(QMainWindow):
         column_action.triggered.connect(self.auto_layout_columns_only)
         self.toolbar.addAction(column_action)
 
+        self.restore_positions_action = QAction("JSONの座標に戻す", self)
+        self.restore_positions_action.setToolTip("開いているJSONに保存されたタスクの座標に戻します")
+        self.restore_positions_action.setEnabled(False)
+        self.restore_positions_action.triggered.connect(self.restore_json_positions)
+        self.toolbar.addAction(self.restore_positions_action)
+
         self.toolbar.addSeparator()
 
         self.collapse_menu = QMenu(self)
@@ -875,6 +881,7 @@ class MainWindow(QMainWindow):
 
     def set_modified(self, modified=True):
         self.modified = modified
+        self.restore_positions_action.setEnabled(self.current_file is not None)
         marker = "*" if modified else ""
         filename = self.current_file.name if self.current_file else "TaskFlow"
         self.setWindowTitle(f"{filename}{marker}")
@@ -1823,6 +1830,52 @@ class MainWindow(QMainWindow):
         for node in self.nodes.values():
             node.task["x"] = node.pos().x()
             node.task["y"] = node.pos().y()
+
+    def restore_json_positions(self):
+        if self.current_file is None:
+            return
+
+        try:
+            with open(self.current_file, "r", encoding="utf-8") as f:
+                saved_project = json.load(f)
+            if not isinstance(saved_project, dict) or not isinstance(saved_project.get("tasks"), list):
+                raise ValueError("JSONのtasksが配列ではありません")
+            positions = {}
+            for task in saved_project["tasks"]:
+                if not isinstance(task, dict):
+                    raise ValueError("JSONのtasksに不正なタスクがあります")
+                task_id = str(task.get("id", ""))
+                if task_id not in self.nodes or "x" not in task or "y" not in task:
+                    continue
+                x, y = float(task["x"]), float(task["y"])
+                if not math.isfinite(x) or not math.isfinite(y):
+                    raise ValueError(f"{task_id} の座標が不正です")
+                positions[task_id] = QPointF(x, y)
+        except (OSError, ValueError, TypeError, OverflowError) as e:
+            QMessageBox.warning(self, "座標を復元できません", str(e))
+            return
+
+        horizontal_position = self.view.horizontalScrollBar().value()
+        vertical_position = self.view.verticalScrollBar().value()
+        changed = False
+        self._layout_in_progress = True
+        try:
+            for task_id, position in positions.items():
+                node = self.nodes[task_id]
+                changed = changed or node.pos() != position
+                node.setPos(position)
+                node.task["x"] = position.x()
+                node.task["y"] = position.y()
+            self.apply_collapsed_groups()
+            self.update_group_items()
+        finally:
+            self._layout_in_progress = False
+        self.view.horizontalScrollBar().setValue(horizontal_position)
+        self.view.verticalScrollBar().setValue(vertical_position)
+        self.refresh_editor()
+        if changed:
+            self.set_modified(True)
+        self.statusBar().showMessage(f"JSONの座標に戻しました: {len(positions)} 個のタスク", 4000)
 
     def save_json(self):
         if not self.current_file:
