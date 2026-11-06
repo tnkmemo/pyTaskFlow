@@ -566,6 +566,8 @@ class DependencyView(QGraphicsView):
         self.app_window = app_window
         self.is_panning = False
         self.last_pan_pos = None
+        self.pan_start_pos = None
+        self.pan_dragged = False
         self.setRenderHint(QPainter.Antialiasing)
         self.setRenderHint(QPainter.TextAntialiasing)
         self.setDragMode(QGraphicsView.NoDrag)
@@ -579,19 +581,27 @@ class DependencyView(QGraphicsView):
                 self.app_window.task_node_for_item(item) is None
                 and self.app_window.group_summary_for_item(item) is None
             ):
-                self.app_window.handle_canvas_empty_click()
                 if not self.app_window.is_dependency_pick_mode:
                     self.is_panning = True
                     self.last_pan_pos = event.position()
+                    self.pan_start_pos = event.position()
+                    self.pan_dragged = False
                     self.setCursor(Qt.ClosedHandCursor)
                     event.accept()
                     return
+                self.app_window.handle_canvas_empty_click()
                 event.accept()
                 return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         if self.is_panning and self.last_pan_pos is not None:
+            if not self.pan_dragged:
+                distance = (event.position() - self.pan_start_pos).manhattanLength()
+                if distance < QApplication.startDragDistance():
+                    event.accept()
+                    return
+                self.pan_dragged = True
             delta = event.position() - self.last_pan_pos
             self.last_pan_pos = event.position()
             self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - int(delta.x()))
@@ -602,8 +612,12 @@ class DependencyView(QGraphicsView):
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton and self.is_panning:
+            if not self.pan_dragged:
+                self.app_window.handle_canvas_empty_click()
             self.is_panning = False
             self.last_pan_pos = None
+            self.pan_start_pos = None
+            self.pan_dragged = False
             self.unsetCursor()
             event.accept()
             return
