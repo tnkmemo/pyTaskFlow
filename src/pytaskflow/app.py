@@ -581,15 +581,11 @@ class DependencyView(QGraphicsView):
                 self.app_window.task_node_for_item(item) is None
                 and self.app_window.group_summary_for_item(item) is None
             ):
-                if not self.app_window.is_dependency_pick_mode:
-                    self.is_panning = True
-                    self.last_pan_pos = event.position()
-                    self.pan_start_pos = event.position()
-                    self.pan_dragged = False
-                    self.setCursor(Qt.ClosedHandCursor)
-                    event.accept()
-                    return
-                self.app_window.handle_canvas_empty_click()
+                self.is_panning = True
+                self.last_pan_pos = event.position()
+                self.pan_start_pos = event.position()
+                self.pan_dragged = False
+                self.setCursor(Qt.ClosedHandCursor)
                 event.accept()
                 return
         super().mousePressEvent(event)
