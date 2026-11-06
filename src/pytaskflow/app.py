@@ -881,7 +881,7 @@ class MainWindow(QMainWindow):
 
     def mark_editor_modified(self, rebuild_graph=False):
         if rebuild_graph:
-            self.refresh_graph_view()
+            self.refresh_graph_view(preserve_view=True)
         self.refresh_editor()
         self.set_modified(True)
 
@@ -1391,7 +1391,9 @@ class MainWindow(QMainWindow):
         self.set_modified(False)
         self.statusBar().showMessage("新しいプロジェクトを作成しました", 3000)
 
-    def refresh_graph_view(self):
+    def refresh_graph_view(self, *, preserve_view=False):
+        horizontal_position = self.view.horizontalScrollBar().value()
+        vertical_position = self.view.verticalScrollBar().value()
         self._layout_in_progress = True
         try:
             self.clear_graph()
@@ -1427,7 +1429,11 @@ class MainWindow(QMainWindow):
             self._layout_in_progress = False
 
         self.update_group_items()
-        self.fit_all()
+        if preserve_view:
+            self.view.horizontalScrollBar().setValue(horizontal_position)
+            self.view.verticalScrollBar().setValue(vertical_position)
+        else:
+            self.fit_all()
 
     def update_group_items(self):
         self.update_scene_rect()
