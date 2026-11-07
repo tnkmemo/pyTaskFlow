@@ -142,7 +142,9 @@ def group_color(group: str) -> QColor:
 
 class GroupToggleItem(QGraphicsTextItem):
     def __init__(self, group, collapsed, app_window, parent):
-        super().__init__(parent)
+        super().__init__()
+        self.owner_item = parent
+        self.setZValue(2)
         self.group = group
         self.collapsed = collapsed
         self.app_window = app_window
@@ -154,6 +156,12 @@ class GroupToggleItem(QGraphicsTextItem):
         self.setToolTip("展開" if collapsed else "折りたたむ")
         self._pressed_at = None
 
+    def paint(self, painter, option, widget=None):
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(QColor("#F8FAFC")))
+        painter.drawRoundedRect(self.boundingRect(), 4, 4)
+        super().paint(painter, option, widget)
+
     def mousePressEvent(self, event):
         self._pressed_at = event.screenPos()
         event.accept()
@@ -164,7 +172,7 @@ class GroupToggleItem(QGraphicsTextItem):
             self._pressed_at = None
             if distance < QApplication.startDragDistance() and self.contains(event.pos()):
                 self.app_window.schedule_group_toggle(
-                    self.group, not self.collapsed, self.parentItem()
+                    self.group, not self.collapsed, self.owner_item
                 )
         event.accept()
 
@@ -184,6 +192,8 @@ class GroupFrameItem(QGraphicsRectItem):
         background.setAlpha(8)
         self.setPen(QPen(border, 1, Qt.DashLine))
         self.setBrush(QBrush(background))
+        # A child cannot stack above items in front of its parent frame.
+        # Keep the button as a separate scene item above nodes and edges.
         self.toggle = GroupToggleItem(group, False, app_window, self)
 
     def update_members(self, members):
@@ -225,7 +235,7 @@ class GroupSummaryItem(QGraphicsRectItem):
         painter.setBrush(QBrush(group_color(self.group)))
         painter.drawRect(QRectF(0, 0, TaskNodeItem.GROUP_BAND_WIDTH, self.rect().height()))
 
-        count_top = self.toggle.pos().y() + self.toggle.boundingRect().height() + 4
+        count_top = 8 + self.toggle.boundingRect().height() + 4
         text_rect = self.rect().adjusted(TaskNodeItem.GROUP_BAND_WIDTH + 8, count_top, -8, -8)
         painter.setPen(TASK_TEXT_COLOR)
         painter.setFont(make_diagram_font(14))
@@ -237,6 +247,7 @@ class GroupSummaryItem(QGraphicsRectItem):
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionHasChanged:
+            self.toggle.setPos(value + QPointF(12, 8))
             delta = value - self._last_pos
             self._last_pos = QPointF(value)
             if self.app_window.group_summaries.get(self.group) is self:
@@ -1076,6 +1087,7 @@ class MainWindow(QMainWindow):
 
     def apply_collapsed_groups(self):
         for summary in self.group_summaries.values():
+            self.scene.removeItem(summary.toggle)
             self.scene.removeItem(summary)
         self.group_summaries.clear()
 
@@ -1109,6 +1121,7 @@ class MainWindow(QMainWindow):
                 min(node.pos().y() for node in members),
             )
             self.scene.addItem(summary)
+            self.scene.addItem(summary.toggle)
             self.group_summaries[group] = summary
             for node in members:
                 if node is self.expanded_node:
@@ -1605,11 +1618,14 @@ class MainWindow(QMainWindow):
                 grouped_nodes[group].append(node)
         for group in list(self.group_frames):
             if group not in grouped_nodes:
-                self.scene.removeItem(self.group_frames.pop(group))
+                frame = self.group_frames.pop(group)
+                self.scene.removeItem(frame.toggle)
+                self.scene.removeItem(frame)
         for group, members in grouped_nodes.items():
             if group not in self.group_frames:
                 frame = GroupFrameItem(group, self)
                 self.scene.addItem(frame)
+                self.scene.addItem(frame.toggle)
                 self.group_frames[group] = frame
             self.group_frames[group].update_members(members)
         self.update_scene_rect()

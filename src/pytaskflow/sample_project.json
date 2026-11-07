@@ -1,221 +1,770 @@
 {
-  "project_name": "工程依存関係サンプル",
+  "project_name": "大規模テストプロジェクト",
   "tasks": [
     {
-      "id": "T01",
-      "name": "仕様作成",
-      "outputs": [
-        "A01"
-      ],
-      "resources": [
-        "M01"
-      ],
-      "x": 0.0,
-      "y": 65.0,
+      "id": "T001",
+      "name": "プロジェクトキックオフ",
+      "status": "完了",
+      "group": "企画",
       "inputs": [],
-      "group": "仕様策定"
+      "outputs": ["A001"],
+      "resources": ["M001"],
+      "x": 0,
+      "y": 0
     },
     {
-      "id": "T02",
-      "name": "設計仕様作成",
-      "group": "仕様策定",
-      "inputs": [
-        "A01"
-      ],
-      "outputs": [
-        "A02"
-      ],
-      "resources": [
-        "M02",
-        "R01"
-      ],
-      "x": 300.0,
-      "y": 0.0
+      "id": "T002",
+      "name": "ステークホルダー整理",
+      "status": "完了",
+      "group": "企画",
+      "inputs": ["A001"],
+      "outputs": ["A002"],
+      "resources": ["M001"],
+      "x": 300,
+      "y": 0
     },
     {
-      "id": "T03",
-      "name": "検証仕様作成",
-      "group": "仕様策定",
-      "inputs": [
-        "A01"
-      ],
-      "outputs": [
-        "A03"
-      ],
-      "resources": [
-        "M03"
-      ],
-      "x": 300.0,
-      "y": 130.0
+      "id": "T003",
+      "name": "現行業務ヒアリング",
+      "status": "完了",
+      "group": "要件定義",
+      "inputs": ["A001"],
+      "outputs": ["A003"],
+      "resources": ["M002"],
+      "x": 300,
+      "y": 150
     },
     {
-      "id": "T04",
-      "name": "ブロック検証",
-      "group": "検証",
-      "inputs": [
-        "A02",
-        "A03"
-      ],
-      "outputs": [
-        "A04"
-      ],
-      "resources": [
-        "M04",
-        "T01_DOC"
-      ],
-      "x": 600.0,
-      "y": 130.0
+      "id": "T004",
+      "name": "課題一覧作成",
+      "status": "完了",
+      "group": "要件定義",
+      "inputs": ["A002", "A003"],
+      "outputs": ["A004"],
+      "resources": ["M002"],
+      "x": 600,
+      "y": 75
     },
     {
-      "id": "T05",
-      "name": "接続検証",
-      "group": "検証",
-      "inputs": [
-        "A04"
-      ],
-      "outputs": [
-        "A05"
-      ],
-      "resources": [
-        "M04"
-      ],
-      "x": 900.0,
-      "y": 130.0
+      "id": "T005",
+      "name": "業務フロー整理",
+      "status": "完了",
+      "group": "要件定義",
+      "inputs": ["A003"],
+      "outputs": ["A005"],
+      "resources": ["M003"],
+      "x": 600,
+      "y": 225
     },
     {
-      "id": "T06",
-      "name": "RTL設計",
+      "id": "T006",
+      "name": "機能要件定義",
+      "status": "進行中",
+      "group": "要件定義",
+      "inputs": ["A004", "A005"],
+      "outputs": ["A006"],
+      "resources": ["M002"],
+      "x": 900,
+      "y": 75
+    },
+    {
+      "id": "T007",
+      "name": "非機能要件定義",
+      "status": "進行中",
+      "group": "要件定義",
+      "inputs": ["A004"],
+      "outputs": ["A007"],
+      "resources": ["M004"],
+      "x": 900,
+      "y": 225
+    },
+    {
+      "id": "T008",
+      "name": "画面一覧作成",
+      "status": "進行中",
       "group": "設計",
-      "inputs": [
-        "A02"
-      ],
-      "outputs": [
-        "A06"
-      ],
-      "resources": [
-        "R01"
-      ],
-      "x": 600.0,
-      "y": 0.0
+      "inputs": ["A006"],
+      "outputs": ["A008"],
+      "resources": ["M005"],
+      "x": 1200,
+      "y": 0
     },
     {
-      "id": "T07",
-      "name": "リリース判定",
+      "id": "T009",
+      "name": "データ項目定義",
+      "status": "進行中",
+      "group": "設計",
+      "inputs": ["A006", "A007"],
+      "outputs": ["A009"],
+      "resources": ["M006"],
+      "x": 1200,
+      "y": 150
+    },
+    {
+      "id": "T010",
+      "name": "外部連携方式設計",
+      "status": "進行中",
+      "group": "設計",
+      "inputs": ["A006", "A007"],
+      "outputs": ["A010"],
+      "resources": ["M007"],
+      "x": 1200,
+      "y": 300
+    },
+    {
+      "id": "T011",
+      "name": "権限モデル設計",
+      "status": "未着手",
+      "group": "設計",
+      "inputs": ["A006", "A007"],
+      "outputs": ["A011"],
+      "resources": ["M004"],
+      "x": 1500,
+      "y": 0
+    },
+    {
+      "id": "T012",
+      "name": "DB 論理設計",
+      "status": "未着手",
+      "group": "設計",
+      "inputs": ["A009"],
+      "outputs": ["A012"],
+      "resources": ["M006"],
+      "x": 1500,
+      "y": 150
+    },
+    {
+      "id": "T013",
+      "name": "API 基本設計",
+      "status": "未着手",
+      "group": "設計",
+      "inputs": ["A010", "A012"],
+      "outputs": ["A013"],
+      "resources": ["M007"],
+      "x": 1800,
+      "y": 150
+    },
+    {
+      "id": "T014",
+      "name": "UI ワイヤーフレーム作成",
+      "status": "未着手",
+      "group": "設計",
+      "inputs": ["A008", "A011"],
+      "outputs": ["A014"],
+      "resources": ["M005"],
+      "x": 1800,
+      "y": 0
+    },
+    {
+      "id": "T015",
+      "name": "バッチ処理設計",
+      "status": "未着手",
+      "group": "設計",
+      "inputs": ["A009", "A010"],
+      "outputs": ["A015"],
+      "resources": ["M007"],
+      "x": 1800,
+      "y": 300
+    },
+    {
+      "id": "T016",
+      "name": "インフラ構成設計",
+      "status": "未着手",
+      "group": "設計",
+      "inputs": ["A007"],
+      "outputs": ["A016"],
+      "resources": ["M008"],
+      "x": 1500,
+      "y": 450
+    },
+    {
+      "id": "T017",
+      "name": "ログ監視設計",
+      "status": "未着手",
+      "group": "設計",
+      "inputs": ["A007", "A016"],
+      "outputs": ["A017"],
+      "resources": ["M008"],
+      "x": 1800,
+      "y": 450
+    },
+    {
+      "id": "T018",
+      "name": "画面共通部品実装",
+      "status": "未着手",
+      "group": "実装",
+      "inputs": ["A014"],
+      "outputs": ["A018"],
+      "resources": ["M009"],
+      "x": 2100,
+      "y": 0
+    },
+    {
+      "id": "T019",
+      "name": "認証機能実装",
+      "status": "未着手",
+      "group": "実装",
+      "inputs": ["A011", "A013"],
+      "outputs": ["A019"],
+      "resources": ["M009"],
+      "x": 2100,
+      "y": 150
+    },
+    {
+      "id": "T020",
+      "name": "ユーザー管理実装",
+      "status": "未着手",
+      "group": "実装",
+      "inputs": ["A011", "A013", "A019"],
+      "outputs": ["A020"],
+      "resources": ["M009"],
+      "x": 2400,
+      "y": 0
+    },
+    {
+      "id": "T021",
+      "name": "案件管理実装",
+      "status": "未着手",
+      "group": "実装",
+      "inputs": ["A012", "A013", "A018"],
+      "outputs": ["A021"],
+      "resources": ["M009"],
+      "x": 2400,
+      "y": 150
+    },
+    {
+      "id": "T022",
+      "name": "タスク管理実装",
+      "status": "未着手",
+      "group": "実装",
+      "inputs": ["A012", "A013", "A018"],
+      "outputs": ["A022"],
+      "resources": ["M009"],
+      "x": 2400,
+      "y": 300
+    },
+    {
+      "id": "T023",
+      "name": "通知機能実装",
+      "status": "未着手",
+      "group": "実装",
+      "inputs": ["A010", "A013", "A020", "A022"],
+      "outputs": ["A023"],
+      "resources": ["M009"],
+      "x": 2700,
+      "y": 75
+    },
+    {
+      "id": "T024",
+      "name": "帳票出力実装",
+      "status": "未着手",
+      "group": "実装",
+      "inputs": ["A012", "A013", "A021"],
+      "outputs": ["A024"],
+      "resources": ["M009"],
+      "x": 2700,
+      "y": 225
+    },
+    {
+      "id": "T025",
+      "name": "夜間バッチ実装",
+      "status": "未着手",
+      "group": "実装",
+      "inputs": ["A015", "A021", "A022"],
+      "outputs": ["A025"],
+      "resources": ["M009"],
+      "x": 2700,
+      "y": 375
+    },
+    {
+      "id": "T026",
+      "name": "監視設定実装",
+      "status": "未着手",
+      "group": "実装",
+      "inputs": ["A016", "A017"],
+      "outputs": ["A026"],
+      "resources": ["M008"],
+      "x": 2100,
+      "y": 450
+    },
+    {
+      "id": "T027",
+      "name": "単体テスト仕様作成",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A013", "A014", "A015"],
+      "outputs": ["A027"],
+      "resources": ["M010"],
+      "x": 2100,
+      "y": 600
+    },
+    {
+      "id": "T028",
+      "name": "認証単体テスト",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A019", "A027"],
+      "outputs": ["A028"],
+      "resources": ["M010"],
+      "x": 3000,
+      "y": 0
+    },
+    {
+      "id": "T029",
+      "name": "ユーザー管理単体テスト",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A020", "A027"],
+      "outputs": ["A029"],
+      "resources": ["M010"],
+      "x": 3000,
+      "y": 150
+    },
+    {
+      "id": "T030",
+      "name": "案件管理単体テスト",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A021", "A027"],
+      "outputs": ["A030"],
+      "resources": ["M010"],
+      "x": 3000,
+      "y": 300
+    },
+    {
+      "id": "T031",
+      "name": "タスク管理単体テスト",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A022", "A027"],
+      "outputs": ["A031"],
+      "resources": ["M010"],
+      "x": 3000,
+      "y": 450
+    },
+    {
+      "id": "T032",
+      "name": "通知単体テスト",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A023", "A027"],
+      "outputs": ["A032"],
+      "resources": ["M010"],
+      "x": 3300,
+      "y": 75
+    },
+    {
+      "id": "T033",
+      "name": "帳票単体テスト",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A024", "A027"],
+      "outputs": ["A033"],
+      "resources": ["M010"],
+      "x": 3300,
+      "y": 225
+    },
+    {
+      "id": "T034",
+      "name": "バッチ単体テスト",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A025", "A027"],
+      "outputs": ["A034"],
+      "resources": ["M010"],
+      "x": 3300,
+      "y": 375
+    },
+    {
+      "id": "T035",
+      "name": "監視単体テスト",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A026", "A027"],
+      "outputs": ["A035"],
+      "resources": ["M010"],
+      "x": 3300,
+      "y": 525
+    },
+    {
+      "id": "T036",
+      "name": "結合テスト仕様作成",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A006", "A007", "A013", "A014", "A015", "A017"],
+      "outputs": ["A036"],
+      "resources": ["M011"],
+      "x": 2400,
+      "y": 600
+    },
+    {
+      "id": "T037",
+      "name": "基本機能結合テスト",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A028", "A029", "A030", "A031", "A036"],
+      "outputs": ["A037"],
+      "resources": ["M011"],
+      "x": 3600,
+      "y": 150
+    },
+    {
+      "id": "T038",
+      "name": "外部連携結合テスト",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A032", "A036"],
+      "outputs": ["A038"],
+      "resources": ["M011"],
+      "x": 3600,
+      "y": 300
+    },
+    {
+      "id": "T039",
+      "name": "バッチ連携結合テスト",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A033", "A034", "A036"],
+      "outputs": ["A039"],
+      "resources": ["M011"],
+      "x": 3600,
+      "y": 450
+    },
+    {
+      "id": "T040",
+      "name": "運用監視結合テスト",
+      "status": "未着手",
+      "group": "テスト",
+      "inputs": ["A035", "A036"],
+      "outputs": ["A040"],
+      "resources": ["M011"],
+      "x": 3600,
+      "y": 600
+    },
+    {
+      "id": "T041",
+      "name": "性能テスト準備",
+      "status": "未着手",
+      "group": "性能",
+      "inputs": ["A016", "A021", "A022", "A025"],
+      "outputs": ["A041"],
+      "resources": ["M012"],
+      "x": 3000,
+      "y": 750
+    },
+    {
+      "id": "T042",
+      "name": "性能テスト実施",
+      "status": "未着手",
+      "group": "性能",
+      "inputs": ["A037", "A038", "A039", "A041"],
+      "outputs": ["A042"],
+      "resources": ["M012"],
+      "x": 3900,
+      "y": 450
+    },
+    {
+      "id": "T043",
+      "name": "脆弱性診断準備",
+      "status": "未着手",
+      "group": "品質保証",
+      "inputs": ["A019", "A020", "A021", "A022"],
+      "outputs": ["A043"],
+      "resources": ["M004"],
+      "x": 3000,
+      "y": 900
+    },
+    {
+      "id": "T044",
+      "name": "脆弱性診断実施",
+      "status": "未着手",
+      "group": "品質保証",
+      "inputs": ["A037", "A038", "A043"],
+      "outputs": ["A044"],
+      "resources": ["M004"],
+      "x": 3900,
+      "y": 600
+    },
+    {
+      "id": "T045",
+      "name": "受入テスト仕様作成",
+      "status": "未着手",
+      "group": "受入",
+      "inputs": ["A006", "A007", "A036"],
+      "outputs": ["A045"],
+      "resources": ["M011"],
+      "x": 3300,
+      "y": 750
+    },
+    {
+      "id": "T046",
+      "name": "受入テスト実施",
+      "status": "未着手",
+      "group": "受入",
+      "inputs": ["A037", "A038", "A039", "A040", "A045"],
+      "outputs": ["A046"],
+      "resources": ["M011"],
+      "x": 3900,
+      "y": 750
+    },
+    {
+      "id": "T047",
+      "name": "不具合修正",
+      "status": "未着手",
+      "group": "品質保証",
+      "inputs": ["A042", "A044", "A046"],
+      "outputs": ["A047"],
+      "resources": ["M009"],
+      "x": 4200,
+      "y": 600
+    },
+    {
+      "id": "T048",
+      "name": "リグレッションテスト",
+      "status": "未着手",
+      "group": "品質保証",
+      "inputs": ["A047", "A036"],
+      "outputs": ["A048"],
+      "resources": ["M011"],
+      "x": 4500,
+      "y": 600
+    },
+    {
+      "id": "T049",
+      "name": "リリース判定資料作成",
+      "status": "未着手",
       "group": "リリース",
-      "inputs": [
-        "A04",
-        "A06"
-      ],
-      "outputs": [
-        "A07"
-      ],
-      "resources": [
-        "M05"
-      ],
-      "x": 1200.0,
-      "y": 65.0
+      "inputs": ["A042", "A044", "A048"],
+      "outputs": ["A049"],
+      "resources": ["M013"],
+      "x": 4800,
+      "y": 450
+    },
+    {
+      "id": "T050",
+      "name": "運用手順書作成",
+      "status": "未着手",
+      "group": "リリース",
+      "inputs": ["A016", "A017", "A026", "A040"],
+      "outputs": ["A050"],
+      "resources": ["M014"],
+      "x": 4200,
+      "y": 900
+    },
+    {
+      "id": "T051",
+      "name": "本番リリース",
+      "status": "未着手",
+      "group": "リリース",
+      "inputs": ["A049", "A050"],
+      "outputs": ["A051"],
+      "resources": ["M013", "M014"],
+      "x": 5100,
+      "y": 600
+    },
+    {
+      "id": "T052",
+      "name": "リリース後確認",
+      "status": "未着手",
+      "group": "リリース",
+      "inputs": ["A051"],
+      "outputs": ["A052"],
+      "resources": ["M014"],
+      "x": 5400,
+      "y": 600
     }
   ],
   "artifacts": [
-    {
-      "id": "A01",
-      "name": "仕様書",
-      "link": "C:\\Project\\spec\\仕様書.xlsx"
-    },
-    {
-      "id": "A02",
-      "name": "RTL一式",
-      "link": "C:\\Project\\rtl"
-    },
-    {
-      "id": "A03",
-      "name": "検証仕様書",
-      "link": "C:\\Project\\verification\\検証仕様書.xlsx"
-    },
-    {
-      "id": "A04",
-      "name": "単体検証結果",
-      "link": "C:\\Project\\unit_test\\単体検証結果.xlsx"
-    },
-    {
-      "id": "A05",
-      "name": "結合検証結果",
-      "link": "C:\\Project\\integration\\結合検証結果.xlsx"
-    },
-    {
-      "id": "A06",
-      "name": "レビュー記録",
-      "link": "C:\\Project\\review\\レビュー記録.xlsx"
-    },
-    {
-      "id": "A07",
-      "name": "リリース判定資料",
-      "link": "C:\\Project\\release\\リリース判定資料.xlsx"
-    },
-    {
-      "id": "M01",
-      "name": "仕様確定手順書",
-      "link": "C:\\Project\\manuals\\spec_flow.pdf"
-    },
-    {
-      "id": "M02",
-      "name": "RTL設計マニュアル",
-      "link": "C:\\Project\\manuals\\rtl_design.pdf"
-    },
-    {
-      "id": "M03",
-      "name": "検証仕様作成ガイド",
-      "link": "C:\\Project\\manuals\\verification_plan.pdf"
-    },
-    {
-      "id": "M04",
-      "name": "検証実施マニュアル",
-      "link": "C:\\Project\\manuals\\verification_run.pdf"
-    },
-    {
-      "id": "M05",
-      "name": "リリース判定基準",
-      "link": "C:\\Project\\manuals\\release_criteria.xlsx"
-    },
-    {
-      "id": "R01",
-      "name": "コーディング規約",
-      "link": "https://example.com/coding-rule"
-    },
-    {
-      "id": "T01_DOC",
-      "name": "検証結果テンプレート",
-      "link": "C:\\Project\\templates\\verification_result.xlsx"
-    }
+    {"id": "A001", "name": "キックオフ議事録", "link": "C:\\Project\\docs\\A001_kickoff_minutes.docx"},
+    {"id": "A002", "name": "ステークホルダー一覧", "link": "C:\\Project\\docs\\A002_stakeholders.xlsx"},
+    {"id": "A003", "name": "現行業務ヒアリングメモ", "link": "C:\\Project\\docs\\A003_interview_notes.docx"},
+    {"id": "A004", "name": "課題一覧", "link": "C:\\Project\\docs\\A004_issue_list.xlsx"},
+    {"id": "A005", "name": "業務フロー図", "link": "C:\\Project\\docs\\A005_business_flow.vsdx"},
+    {"id": "A006", "name": "機能要件定義書", "link": "C:\\Project\\docs\\A006_functional_requirements.xlsx"},
+    {"id": "A007", "name": "非機能要件定義書", "link": "C:\\Project\\docs\\A007_nonfunctional_requirements.xlsx"},
+    {"id": "A008", "name": "画面一覧", "link": "C:\\Project\\design\\A008_screen_list.xlsx"},
+    {"id": "A009", "name": "データ項目定義書", "link": "C:\\Project\\design\\A009_data_dictionary.xlsx"},
+    {"id": "A010", "name": "外部連携方式設計書", "link": "C:\\Project\\design\\A010_integration_design.docx"},
+    {"id": "A011", "name": "権限モデル設計書", "link": "C:\\Project\\design\\A011_permission_model.xlsx"},
+    {"id": "A012", "name": "DB 論理設計書", "link": "C:\\Project\\design\\A012_db_logical_design.xlsx"},
+    {"id": "A013", "name": "API 基本設計書", "link": "C:\\Project\\design\\A013_api_design.yaml"},
+    {"id": "A014", "name": "UI ワイヤーフレーム", "link": "C:\\Project\\design\\A014_wireframes.fig"},
+    {"id": "A015", "name": "バッチ処理設計書", "link": "C:\\Project\\design\\A015_batch_design.xlsx"},
+    {"id": "A016", "name": "インフラ構成設計書", "link": "C:\\Project\\infra\\A016_architecture.drawio"},
+    {"id": "A017", "name": "ログ監視設計書", "link": "C:\\Project\\infra\\A017_monitoring_design.xlsx"},
+    {"id": "A018", "name": "画面共通部品ソース", "link": "C:\\Project\\src\\frontend\\components"},
+    {"id": "A019", "name": "認証機能ソース", "link": "C:\\Project\\src\\auth"},
+    {"id": "A020", "name": "ユーザー管理ソース", "link": "C:\\Project\\src\\users"},
+    {"id": "A021", "name": "案件管理ソース", "link": "C:\\Project\\src\\projects"},
+    {"id": "A022", "name": "タスク管理ソース", "link": "C:\\Project\\src\\tasks"},
+    {"id": "A023", "name": "通知機能ソース", "link": "C:\\Project\\src\\notifications"},
+    {"id": "A024", "name": "帳票出力ソース", "link": "C:\\Project\\src\\reports"},
+    {"id": "A025", "name": "夜間バッチソース", "link": "C:\\Project\\src\\batch"},
+    {"id": "A026", "name": "監視設定ファイル", "link": "C:\\Project\\infra\\monitoring"},
+    {"id": "A027", "name": "単体テスト仕様書", "link": "C:\\Project\\test\\A027_unit_test_spec.xlsx"},
+    {"id": "A028", "name": "認証単体テスト結果", "link": "C:\\Project\\test\\A028_auth_unit_result.xlsx"},
+    {"id": "A029", "name": "ユーザー管理単体テスト結果", "link": "C:\\Project\\test\\A029_user_unit_result.xlsx"},
+    {"id": "A030", "name": "案件管理単体テスト結果", "link": "C:\\Project\\test\\A030_project_unit_result.xlsx"},
+    {"id": "A031", "name": "タスク管理単体テスト結果", "link": "C:\\Project\\test\\A031_task_unit_result.xlsx"},
+    {"id": "A032", "name": "通知単体テスト結果", "link": "C:\\Project\\test\\A032_notification_unit_result.xlsx"},
+    {"id": "A033", "name": "帳票単体テスト結果", "link": "C:\\Project\\test\\A033_report_unit_result.xlsx"},
+    {"id": "A034", "name": "バッチ単体テスト結果", "link": "C:\\Project\\test\\A034_batch_unit_result.xlsx"},
+    {"id": "A035", "name": "監視単体テスト結果", "link": "C:\\Project\\test\\A035_monitoring_unit_result.xlsx"},
+    {"id": "A036", "name": "結合テスト仕様書", "link": "C:\\Project\\test\\A036_integration_test_spec.xlsx"},
+    {"id": "A037", "name": "基本機能結合テスト結果", "link": "C:\\Project\\test\\A037_core_integration_result.xlsx"},
+    {"id": "A038", "name": "外部連携結合テスト結果", "link": "C:\\Project\\test\\A038_external_integration_result.xlsx"},
+    {"id": "A039", "name": "バッチ連携結合テスト結果", "link": "C:\\Project\\test\\A039_batch_integration_result.xlsx"},
+    {"id": "A040", "name": "運用監視結合テスト結果", "link": "C:\\Project\\test\\A040_ops_integration_result.xlsx"},
+    {"id": "A041", "name": "性能テスト準備資料", "link": "C:\\Project\\perf\\A041_perf_preparation.xlsx"},
+    {"id": "A042", "name": "性能テスト結果", "link": "C:\\Project\\perf\\A042_perf_result.xlsx"},
+    {"id": "A043", "name": "脆弱性診断準備資料", "link": "C:\\Project\\security\\A043_security_preparation.xlsx"},
+    {"id": "A044", "name": "脆弱性診断結果", "link": "C:\\Project\\security\\A044_security_result.xlsx"},
+    {"id": "A045", "name": "受入テスト仕様書", "link": "C:\\Project\\uat\\A045_uat_spec.xlsx"},
+    {"id": "A046", "name": "受入テスト結果", "link": "C:\\Project\\uat\\A046_uat_result.xlsx"},
+    {"id": "A047", "name": "不具合修正一覧", "link": "C:\\Project\\qa\\A047_bugfix_list.xlsx"},
+    {"id": "A048", "name": "リグレッションテスト結果", "link": "C:\\Project\\qa\\A048_regression_result.xlsx"},
+    {"id": "A049", "name": "リリース判定資料", "link": "C:\\Project\\release\\A049_release_decision.xlsx"},
+    {"id": "A050", "name": "運用手順書", "link": "C:\\Project\\release\\A050_operation_manual.docx"},
+    {"id": "A051", "name": "本番リリース記録", "link": "C:\\Project\\release\\A051_release_record.xlsx"},
+    {"id": "A052", "name": "リリース後確認記録", "link": "C:\\Project\\release\\A052_post_release_check.xlsx"},
+    {"id": "M001", "name": "プロジェクト計画テンプレート", "link": "C:\\Project\\manuals\\project_plan_template.xlsx"},
+    {"id": "M002", "name": "要件定義ガイド", "link": "C:\\Project\\manuals\\requirements_guide.pdf"},
+    {"id": "M003", "name": "業務フロー記法ガイド", "link": "C:\\Project\\manuals\\business_flow_guide.pdf"},
+    {"id": "M004", "name": "セキュリティ基準", "link": "C:\\Project\\manuals\\security_standard.pdf"},
+    {"id": "M005", "name": "UI 設計ガイド", "link": "C:\\Project\\manuals\\ui_design_guide.pdf"},
+    {"id": "M006", "name": "データ設計標準", "link": "C:\\Project\\manuals\\data_design_standard.pdf"},
+    {"id": "M007", "name": "API 設計標準", "link": "C:\\Project\\manuals\\api_design_standard.pdf"},
+    {"id": "M008", "name": "インフラ運用標準", "link": "C:\\Project\\manuals\\infra_ops_standard.pdf"},
+    {"id": "M009", "name": "実装規約", "link": "C:\\Project\\manuals\\coding_standard.pdf"},
+    {"id": "M010", "name": "単体テスト標準", "link": "C:\\Project\\manuals\\unit_test_standard.pdf"},
+    {"id": "M011", "name": "結合・受入テスト標準", "link": "C:\\Project\\manuals\\integration_uat_standard.pdf"},
+    {"id": "M012", "name": "性能テスト標準", "link": "C:\\Project\\manuals\\performance_test_standard.pdf"},
+    {"id": "M013", "name": "リリース判定基準", "link": "C:\\Project\\manuals\\release_criteria.xlsx"},
+    {"id": "M014", "name": "運用引き継ぎチェックリスト", "link": "C:\\Project\\manuals\\ops_handover_checklist.xlsx"}
   ],
   "dependencies": [
-    {
-      "from": "T01",
-      "to": "T02"
-    },
-    {
-      "from": "T01",
-      "to": "T03"
-    },
-    {
-      "from": "T03",
-      "to": "T04"
-    },
-    {
-      "from": "T02",
-      "to": "T06"
-    },
-    {
-      "from": "T04",
-      "to": "T05"
-    },
-    {
-      "from": "T05",
-      "to": "T07"
-    },
-    {
-      "from": "T06",
-      "to": "T07"
-    }
+    {"from": "T001", "to": "T002"},
+    {"from": "T001", "to": "T003"},
+    {"from": "T002", "to": "T004"},
+    {"from": "T003", "to": "T004"},
+    {"from": "T003", "to": "T005"},
+    {"from": "T004", "to": "T006"},
+    {"from": "T005", "to": "T006"},
+    {"from": "T004", "to": "T007"},
+    {"from": "T006", "to": "T008"},
+    {"from": "T006", "to": "T009"},
+    {"from": "T006", "to": "T010"},
+    {"from": "T007", "to": "T009"},
+    {"from": "T007", "to": "T010"},
+    {"from": "T006", "to": "T011"},
+    {"from": "T007", "to": "T011"},
+    {"from": "T009", "to": "T012"},
+    {"from": "T010", "to": "T013"},
+    {"from": "T012", "to": "T013"},
+    {"from": "T008", "to": "T014"},
+    {"from": "T011", "to": "T014"},
+    {"from": "T009", "to": "T015"},
+    {"from": "T010", "to": "T015"},
+    {"from": "T007", "to": "T016"},
+    {"from": "T016", "to": "T017"},
+    {"from": "T014", "to": "T018"},
+    {"from": "T011", "to": "T019"},
+    {"from": "T013", "to": "T019"},
+    {"from": "T011", "to": "T020"},
+    {"from": "T013", "to": "T020"},
+    {"from": "T019", "to": "T020"},
+    {"from": "T012", "to": "T021"},
+    {"from": "T013", "to": "T021"},
+    {"from": "T018", "to": "T021"},
+    {"from": "T012", "to": "T022"},
+    {"from": "T013", "to": "T022"},
+    {"from": "T018", "to": "T022"},
+    {"from": "T010", "to": "T023"},
+    {"from": "T013", "to": "T023"},
+    {"from": "T020", "to": "T023"},
+    {"from": "T022", "to": "T023"},
+    {"from": "T012", "to": "T024"},
+    {"from": "T013", "to": "T024"},
+    {"from": "T021", "to": "T024"},
+    {"from": "T015", "to": "T025"},
+    {"from": "T021", "to": "T025"},
+    {"from": "T022", "to": "T025"},
+    {"from": "T016", "to": "T026"},
+    {"from": "T017", "to": "T026"},
+    {"from": "T013", "to": "T027"},
+    {"from": "T014", "to": "T027"},
+    {"from": "T015", "to": "T027"},
+    {"from": "T019", "to": "T028"},
+    {"from": "T027", "to": "T028"},
+    {"from": "T020", "to": "T029"},
+    {"from": "T027", "to": "T029"},
+    {"from": "T021", "to": "T030"},
+    {"from": "T027", "to": "T030"},
+    {"from": "T022", "to": "T031"},
+    {"from": "T027", "to": "T031"},
+    {"from": "T023", "to": "T032"},
+    {"from": "T027", "to": "T032"},
+    {"from": "T024", "to": "T033"},
+    {"from": "T027", "to": "T033"},
+    {"from": "T025", "to": "T034"},
+    {"from": "T027", "to": "T034"},
+    {"from": "T026", "to": "T035"},
+    {"from": "T027", "to": "T035"},
+    {"from": "T006", "to": "T036"},
+    {"from": "T007", "to": "T036"},
+    {"from": "T013", "to": "T036"},
+    {"from": "T014", "to": "T036"},
+    {"from": "T015", "to": "T036"},
+    {"from": "T017", "to": "T036"},
+    {"from": "T028", "to": "T037"},
+    {"from": "T029", "to": "T037"},
+    {"from": "T030", "to": "T037"},
+    {"from": "T031", "to": "T037"},
+    {"from": "T036", "to": "T037"},
+    {"from": "T032", "to": "T038"},
+    {"from": "T036", "to": "T038"},
+    {"from": "T033", "to": "T039"},
+    {"from": "T034", "to": "T039"},
+    {"from": "T036", "to": "T039"},
+    {"from": "T035", "to": "T040"},
+    {"from": "T036", "to": "T040"},
+    {"from": "T016", "to": "T041"},
+    {"from": "T021", "to": "T041"},
+    {"from": "T022", "to": "T041"},
+    {"from": "T025", "to": "T041"},
+    {"from": "T037", "to": "T042"},
+    {"from": "T038", "to": "T042"},
+    {"from": "T039", "to": "T042"},
+    {"from": "T041", "to": "T042"},
+    {"from": "T019", "to": "T043"},
+    {"from": "T020", "to": "T043"},
+    {"from": "T021", "to": "T043"},
+    {"from": "T022", "to": "T043"},
+    {"from": "T037", "to": "T044"},
+    {"from": "T038", "to": "T044"},
+    {"from": "T043", "to": "T044"},
+    {"from": "T006", "to": "T045"},
+    {"from": "T007", "to": "T045"},
+    {"from": "T036", "to": "T045"},
+    {"from": "T037", "to": "T046"},
+    {"from": "T038", "to": "T046"},
+    {"from": "T039", "to": "T046"},
+    {"from": "T040", "to": "T046"},
+    {"from": "T045", "to": "T046"},
+    {"from": "T042", "to": "T047"},
+    {"from": "T044", "to": "T047"},
+    {"from": "T046", "to": "T047"},
+    {"from": "T047", "to": "T048"},
+    {"from": "T036", "to": "T048"},
+    {"from": "T042", "to": "T049"},
+    {"from": "T044", "to": "T049"},
+    {"from": "T048", "to": "T049"},
+    {"from": "T016", "to": "T050"},
+    {"from": "T017", "to": "T050"},
+    {"from": "T026", "to": "T050"},
+    {"from": "T040", "to": "T050"},
+    {"from": "T049", "to": "T051"},
+    {"from": "T050", "to": "T051"},
+    {"from": "T051", "to": "T052"}
   ]
 }
