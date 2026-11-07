@@ -10,7 +10,7 @@ from importlib.resources import files
 from pathlib import Path
 from urllib.parse import urlparse
 
-from PySide6.QtCore import QPointF, QRectF, QSettings, Qt
+from PySide6.QtCore import QPointF, QRectF, QSettings, Qt, QTimer
 from PySide6.QtGui import QAction, QBrush, QColor, QFont, QIcon, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -356,6 +356,20 @@ class TaskNodeItem(QGraphicsRectItem):
         self.edges = []
         self.expanded = False
         self.resource_items = []
+        self._click_start = None
+
+        # Ordinary scene items avoid an effect cache over resource children that
+        # are removed when the node collapses.
+        self.shadow_items = []
+        for spread, alpha in ((6, 10), (3, 18), (0, 28)):
+            shadow = QGraphicsPathItem(self)
+            shadow.setFlag(QGraphicsItem.ItemStacksBehindParent)
+            shadow.setZValue(-1)
+            shadow.setAcceptedMouseButtons(Qt.NoButton)
+            shadow.setPen(QPen(Qt.NoPen))
+            shadow.setBrush(QBrush(QColor(15, 23, 42, alpha)))
+            shadow.hide()
+            self.shadow_items.append((shadow, spread))
 
         self.setFlags(
             QGraphicsItem.ItemIsMovable
@@ -487,6 +501,8 @@ class TaskNodeItem(QGraphicsRectItem):
             return
 
         self.expanded = expanded
+        self.setZValue(1 if expanded else 0)
+        self.setBrush(QBrush(QColor("#F8FAFC" if expanded else "#FFFFFF")))
         self.update_title_position()
         if expanded:
             self.refresh_resources()
@@ -495,6 +511,18 @@ class TaskNodeItem(QGraphicsRectItem):
             self.setRect(0, 0, self.WIDTH, self.HEIGHT)
             self.group_band.setRect(0, 0, self.GROUP_BAND_WIDTH, self.HEIGHT)
             self.update_edges()
+        self.update_expansion_shadow()
+
+    def update_expansion_shadow(self):
+        for shadow, spread in self.shadow_items:
+            if self.expanded:
+                path = QPainterPath()
+                path.addRoundedRect(
+                    self.rect().translated(4, 6).adjusted(-spread, -spread, spread, spread),
+                    spread + 2, spread + 2,
+                )
+                shadow.setPath(path)
+            shadow.setVisible(self.expanded)
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionHasChanged:
@@ -508,22 +536,30 @@ class TaskNodeItem(QGraphicsRectItem):
         return super().itemChange(change, value)
 
     def mousePressEvent(self, event):
+        self._click_start = None
         if event.button() == Qt.LeftButton:
             if self.app_window.handle_dependency_target_click(self):
                 event.accept()
                 return
+            self._click_start = event.screenPos()
             self.app_window.select_task_node(self)
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self.app_window.toggle_task_node(self)
+            # The first click already toggled the details.
+            self._click_start = None
             event.accept()
             return
         super().mouseDoubleClickEvent(event)
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
+        if event.button() == Qt.LeftButton and self._click_start is not None:
+            distance = (event.screenPos() - self._click_start).manhattanLength()
+            self._click_start = None
+            if distance < QApplication.startDragDistance():
+                self.app_window.schedule_task_node_toggle(self)
         if not self.app_window._layout_in_progress:
             self.app_window.update_group_items()
 
@@ -1644,6 +1680,18 @@ class MainWindow(QMainWindow):
 
         return handled or self.is_dependency_pick_mode
 
+    def schedule_task_node_toggle(self, node: TaskNodeItem):
+        task_id = node.task_id
+
+        def toggle_if_current():
+            # A project reload can delete this node before the callback runs.
+            if self.nodes.get(task_id) is node:
+                self.toggle_task_node(node)
+
+        # Qt may still be dispatching this mouse event through resource children.
+        # Remove those items only after the scene has finished handling the event.
+        QTimer.singleShot(0, self, toggle_if_current)
+
     def toggle_task_node(self, node: TaskNodeItem):
         if node.expanded:
             node.set_expanded(False)
@@ -1659,56 +1707,7 @@ class MainWindow(QMainWindow):
         self.expanded_node = node
         node.set_expanded(True)
         self.select_task_node(node)
-        if self.resolve_node_overlaps():
-            self.statusBar().showMessage("展開したタスクに合わせて重なりを避けました", 3000)
-
-    def resolve_node_overlaps(self) -> bool:
-        """Push lower nodes down when an expanded node would cover them."""
-        def overlaps_horizontally(a: QRectF, b: QRectF) -> bool:
-            return a.left() < b.right() and a.right() > b.left()
-
-        changed = False
-        placed_rects = []
-        nodes = sorted(
-            self.nodes.values(),
-            key=lambda item: (
-                item.sceneBoundingRect().top(),
-                item.sceneBoundingRect().left(),
-                str(item.task_id),
-            ),
-        )
-
-        self._layout_in_progress = True
-        try:
-            for node in nodes:
-                rect = node.sceneBoundingRect()
-                shift_y = 0.0
-                for placed_rect in placed_rects:
-                    if not overlaps_horizontally(rect.translated(0, shift_y), placed_rect):
-                        continue
-                    min_top = placed_rect.bottom() + self.NODE_VERTICAL_GAP
-                    if rect.top() + shift_y < min_top and rect.bottom() + shift_y > placed_rect.top():
-                        shift_y = max(shift_y, min_top - rect.top())
-
-                if shift_y:
-                    node.setPos(node.pos().x(), node.pos().y() + shift_y)
-                    node.task["x"] = node.pos().x()
-                    node.task["y"] = node.pos().y()
-                    changed = True
-                    rect = node.sceneBoundingRect()
-
-                placed_rects.append(rect)
-        finally:
-            self._layout_in_progress = False
-
-        if changed:
-            self.apply_collapsed_groups()
-            for edge in self.edges:
-                edge.update_path()
-            self.update_group_items()
-            self.set_modified(True)
-
-        return changed
+        self.update_group_items()
 
     def get_task_artifacts(self, task: dict, field: str) -> list[dict]:
         artifacts = []
