@@ -774,6 +774,8 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.editor_dock.toggleViewAction())
 
         self.refresh_editor()
+        self.project_dock.hide()
+        self.editor_dock.hide()
 
     def build_form_stack(self):
         self.form_stack = QStackedWidget()
