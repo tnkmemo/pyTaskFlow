@@ -298,7 +298,7 @@ class EdgeItem(QGraphicsPathItem):
         self.setPath(path)
 
     def label(self) -> str:
-        return f"{self.dependency.get('from', '')} -> {self.dependency.get('to', '')}"
+        return self.app_window.dependency_label(self.dependency)
 
     def is_connected_to_selected_task(self) -> bool:
         selected_task_id = self.app_window.selected_task_id()
@@ -861,13 +861,14 @@ class MainWindow(QMainWindow):
         project_layout.addWidget(self.project_tabs)
 
         button_row = QHBoxLayout()
-        add_button = QPushButton("追加")
-        delete_button = QPushButton("削除")
-        add_button.clicked.connect(self.add_selected_tab_item)
-        delete_button.clicked.connect(self.delete_selected_item)
-        button_row.addWidget(add_button)
-        button_row.addWidget(delete_button)
+        self.add_button = QPushButton("追加")
+        self.delete_button = QPushButton("削除")
+        self.add_button.clicked.connect(self.add_selected_tab_item)
+        self.delete_button.clicked.connect(self.delete_selected_item)
+        button_row.addWidget(self.add_button)
+        button_row.addWidget(self.delete_button)
         project_layout.addLayout(button_row)
+        self.project_tabs.currentChanged.connect(self.update_project_buttons)
 
         self.project_dock.setWidget(project_widget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.project_dock)
@@ -894,18 +895,17 @@ class MainWindow(QMainWindow):
 
     def build_form_stack(self):
         self.form_stack = QStackedWidget()
-        empty = QLabel("左の一覧から編集する項目を選択してください")
-        empty.setAlignment(Qt.AlignCenter)
-        self.form_stack.addWidget(empty)
+        self.editor_hint = QLabel("左の一覧から編集する項目を選択してください")
+        self.editor_hint.setAlignment(Qt.AlignCenter)
+        self.editor_hint.setWordWrap(True)
+        self.form_stack.addWidget(self.editor_hint)
         self.form_stack.addWidget(self.build_task_form())
         self.form_stack.addWidget(self.build_artifact_form())
-        self.form_stack.addWidget(self.build_dependency_form())
         return self.form_stack
 
     def build_task_form(self):
         widget = QWidget()
         form = QFormLayout(widget)
-        self.task_id_edit = QLineEdit()
         self.task_name_edit = QLineEdit()
         self.task_group_combo = QComboBox()
         self.task_group_combo.setEditable(True)
@@ -915,7 +915,6 @@ class MainWindow(QMainWindow):
         self.task_x_spin = self.make_position_spinbox()
         self.task_y_spin = self.make_position_spinbox()
 
-        form.addRow("ID", self.task_id_edit)
         form.addRow("Name", self.task_name_edit)
         form.addRow("Group", self.task_group_combo)
         form.addRow("Inputs", self.task_inputs_edit)
@@ -925,7 +924,6 @@ class MainWindow(QMainWindow):
         form.addRow("Y", self.task_y_spin)
 
         for widget_to_watch in (
-            self.task_id_edit,
             self.task_name_edit,
             self.task_inputs_edit,
             self.task_outputs_edit,
@@ -951,17 +949,6 @@ class MainWindow(QMainWindow):
         self.artifact_id_edit.editingFinished.connect(self.apply_artifact_form)
         self.artifact_name_edit.editingFinished.connect(self.apply_artifact_form)
         self.artifact_link_edit.editingFinished.connect(self.apply_artifact_form)
-        return widget
-
-    def build_dependency_form(self):
-        widget = QWidget()
-        form = QFormLayout(widget)
-        self.dep_from_combo = QComboBox()
-        self.dep_to_combo = QComboBox()
-        form.addRow("From", self.dep_from_combo)
-        form.addRow("To", self.dep_to_combo)
-        self.dep_from_combo.currentTextChanged.connect(self.apply_dependency_form)
-        self.dep_to_combo.currentTextChanged.connect(self.apply_dependency_form)
         return widget
 
     def make_position_spinbox(self):
@@ -1193,6 +1180,27 @@ class MainWindow(QMainWindow):
             return dependencies[index]
         return None
 
+    def task_label(self, task_id: str) -> str:
+        task = self.find_task(str(task_id))
+        if task is None:
+            return str(task_id)
+        name = str(task.get("name") or "名前なし")
+        group = task_group(task)
+        return f"{group} / {name}" if group else name
+
+    def dependency_label(self, dependency: dict) -> str:
+        source = self.task_label(dependency.get("from", ""))
+        target = self.task_label(dependency.get("to", ""))
+        return f"{source} → {target}"
+
+    def update_project_buttons(self):
+        current = self.project_tabs.currentWidget()
+        editable = current is not self.dependency_list
+        self.add_button.setVisible(editable)
+        self.delete_button.setVisible(editable)
+        kind = "task" if current is self.task_list else "artifact"
+        self.delete_button.setEnabled(editable and self.selected_kind == kind)
+
     def refresh_editor(self):
         if not hasattr(self, "task_list"):
             return
@@ -1212,9 +1220,7 @@ class MainWindow(QMainWindow):
             )
             for task in sorted_tasks:
                 task_id = str(task.get("id", ""))
-                group = task_group(task)
-                label = f"{group} / {task_id}  {task.get('name', '')}" if group else f"未分類 / {task_id}  {task.get('name', '')}"
-                item = QListWidgetItem(label)
+                item = QListWidgetItem(self.task_label(task_id))
                 item.setData(Qt.UserRole, task_id)
                 self.task_list.addItem(item)
                 if current_kind == "task" and task_id == current_id:
@@ -1231,17 +1237,12 @@ class MainWindow(QMainWindow):
 
             self.dependency_list.clear()
             for index, dep in enumerate(self.project.get("dependencies", [])):
-                item = QListWidgetItem(f"{dep.get('from', '')} -> {dep.get('to', '')}")
+                item = QListWidgetItem(self.dependency_label(dep))
                 item.setData(Qt.UserRole, index)
                 self.dependency_list.addItem(item)
                 if current_kind == "dependency" and index == current_dep_row:
                     self.dependency_list.setCurrentItem(item)
 
-            task_ids = [str(task.get("id", "")) for task in self.project.get("tasks", []) if task.get("id")]
-            self.dep_from_combo.clear()
-            self.dep_to_combo.clear()
-            self.dep_from_combo.addItems(task_ids)
-            self.dep_to_combo.addItems(task_ids)
             current_group = self.task_group_combo.currentText()
             self.task_group_combo.clear()
             self.task_group_combo.addItem("")
@@ -1250,6 +1251,8 @@ class MainWindow(QMainWindow):
             self.populate_selected_form()
         finally:
             self._updating_editor = False
+        self.update_project_buttons()
+        self.refresh_edge_styles()
 
     def populate_selected_form(self):
         if self.selected_kind == "task":
@@ -1257,8 +1260,14 @@ class MainWindow(QMainWindow):
         elif self.selected_kind == "artifact":
             self.populate_artifact_form()
         elif self.selected_kind == "dependency":
-            self.populate_dependency_form()
+            self.editor_hint.setText(
+                "依存関係の追加は「依存追加」から、依存元・依存先のブロックを順にクリックします。\n"
+                "削除は接続線の右クリックから解除してください。\n"
+                "接続先を変更する場合は、解除してから追加し直してください。"
+            )
+            self.form_stack.setCurrentIndex(0)
         else:
+            self.editor_hint.setText("左の一覧から編集する項目を選択してください")
             self.form_stack.setCurrentIndex(0)
 
     def populate_task_form(self):
@@ -1267,7 +1276,6 @@ class MainWindow(QMainWindow):
             self.form_stack.setCurrentIndex(0)
             return
         self.form_stack.setCurrentIndex(1)
-        self.task_id_edit.setText(str(task.get("id", "")))
         self.task_name_edit.setText(str(task.get("name", "")))
         self.task_group_combo.setCurrentText(task_group(task))
         self.task_inputs_edit.setText(self.id_list_to_text(task.get("inputs")))
@@ -1286,15 +1294,6 @@ class MainWindow(QMainWindow):
         self.artifact_name_edit.setText(str(artifact.get("name", "")))
         self.artifact_link_edit.setText(str(get_artifact_link(artifact)))
 
-    def populate_dependency_form(self):
-        dep = self.find_dependency(int(self.selected_id))
-        if not dep:
-            self.form_stack.setCurrentIndex(0)
-            return
-        self.form_stack.setCurrentIndex(3)
-        self.dep_from_combo.setCurrentText(str(dep.get("from", "")))
-        self.dep_to_combo.setCurrentText(str(dep.get("to", "")))
-
     def select_editor_item(self, kind: str, item):
         if self._updating_editor or item is None:
             return
@@ -1311,6 +1310,7 @@ class MainWindow(QMainWindow):
             self.populate_selected_form()
         finally:
             self._updating_editor = False
+        self.update_project_buttons()
         self.refresh_edge_styles()
         self.refresh_dependency_pick_styles()
 
@@ -1329,8 +1329,6 @@ class MainWindow(QMainWindow):
             self.add_task()
         elif current is self.artifact_list:
             self.add_artifact()
-        else:
-            self.add_dependency()
 
     def add_task(self):
         task_id = self.next_id("T", self.tasks.keys())
@@ -1357,45 +1355,12 @@ class MainWindow(QMainWindow):
         self.selected_id = artifact_id
         self.mark_editor_modified()
 
-    def add_dependency(self):
-        task_ids = [str(task.get("id")) for task in self.project.get("tasks", []) if task.get("id")]
-        if len(task_ids) < 2:
-            QMessageBox.information(self, "依存関係を追加できません", "依存関係にはタスクが2つ以上必要です")
-            return
-        dep = None
-        existing = {(item.get("from"), item.get("to")) for item in self.project.get("dependencies", [])}
-        for source in task_ids:
-            for target in task_ids:
-                if source == target or (source, target) in existing:
-                    continue
-                candidate = {"from": source, "to": target}
-                self.project.setdefault("dependencies", []).append(candidate)
-                if not self.has_cycle():
-                    dep = candidate
-                    break
-                self.project["dependencies"].pop()
-            if dep:
-                break
-        if not dep:
-            QMessageBox.information(self, "依存関係を追加できません", "追加できる依存関係の組み合わせがありません")
-            return
-        self.selected_kind = "dependency"
-        self.selected_id = len(self.project["dependencies"]) - 1
-        self.mark_editor_modified(rebuild_graph=True)
-
     def delete_selected_item(self):
-        if self.selected_kind == "task":
+        current = self.project_tabs.currentWidget()
+        if self.selected_kind == "task" and current is self.task_list:
             self.delete_task(str(self.selected_id))
-        elif self.selected_kind == "artifact":
+        elif self.selected_kind == "artifact" and current is self.artifact_list:
             self.delete_artifact(str(self.selected_id))
-        elif self.selected_kind == "dependency":
-            dependencies = self.project.get("dependencies", [])
-            index = int(self.selected_id)
-            if 0 <= index < len(dependencies):
-                dependencies.pop(index)
-                self.selected_kind = None
-                self.selected_id = None
-                self.mark_editor_modified(rebuild_graph=True)
 
     def delete_task(self, task_id: str):
         self.project["tasks"] = [task for task in self.project.get("tasks", []) if str(task.get("id")) != task_id]
@@ -1427,26 +1392,6 @@ class MainWindow(QMainWindow):
         if not task:
             return
 
-        old_id = str(task.get("id", ""))
-        new_id = self.task_id_edit.text().strip()
-        if not new_id:
-            QMessageBox.warning(self, "IDが空です", "タスクIDを入力してください")
-            self.refresh_editor()
-            return
-        if new_id != old_id and self.find_task(new_id):
-            QMessageBox.warning(self, "IDが重複しています", f"{new_id} はすでに使われています")
-            self.refresh_editor()
-            return
-
-        if new_id != old_id:
-            for dep in self.project.get("dependencies", []):
-                if dep.get("from") == old_id:
-                    dep["from"] = new_id
-                if dep.get("to") == old_id:
-                    dep["to"] = new_id
-            self.selected_id = new_id
-
-        task["id"] = new_id
         task["name"] = self.task_name_edit.text().strip()
         group = self.task_group_combo.currentText().strip()
         if group:
@@ -1492,36 +1437,6 @@ class MainWindow(QMainWindow):
         artifact["name"] = self.artifact_name_edit.text().strip()
         artifact.pop("kind", None)
         artifact["link"] = self.artifact_link_edit.text().strip()
-        self.mark_editor_modified(rebuild_graph=True)
-
-    def apply_dependency_form(self):
-        if self._updating_editor or self.selected_kind != "dependency":
-            return
-
-        dep = self.find_dependency(int(self.selected_id))
-        if not dep:
-            return
-
-        source = self.dep_from_combo.currentText()
-        target = self.dep_to_combo.currentText()
-        if not source or not target:
-            return
-        if source == target:
-            QMessageBox.warning(self, "依存関係が不正です", "同じタスク同士は接続できません")
-            self.refresh_editor()
-            return
-
-        old_from = dep.get("from")
-        old_to = dep.get("to")
-        dep["from"] = source
-        dep["to"] = target
-        if self.has_duplicate_dependency() or self.has_cycle():
-            dep["from"] = old_from
-            dep["to"] = old_to
-            QMessageBox.warning(self, "依存関係が不正です", "重複または循環する依存関係は保存できません")
-            self.refresh_editor()
-            return
-
         self.mark_editor_modified(rebuild_graph=True)
 
     def has_duplicate_dependency(self) -> bool:
@@ -1654,7 +1569,9 @@ class MainWindow(QMainWindow):
         return str(self.selected_id)
 
     def refresh_edge_styles(self):
+        selected = self.find_dependency(int(self.selected_id)) if self.selected_kind == "dependency" else None
         for edge in self.edges:
+            edge.setSelected(edge.dependency is selected)
             edge.refresh_style()
 
     def find_dependency_index_for_edge(self, edge: EdgeItem):
@@ -1792,17 +1709,17 @@ class MainWindow(QMainWindow):
         if source_id is None:
             self.dependency_source_id = target_id
             self.select_task_node(node)
-            self.statusBar().showMessage(f"{target_id} を依存元にしました。依存先にするタスクをクリックしてください", 6000)
+            self.statusBar().showMessage(f"{self.task_label(target_id)} を依存元にしました。依存先にするタスクをクリックしてください", 6000)
             return True
 
         if source_id == target_id:
             self.statusBar().showMessage("同じタスク同士は依存関係にできません", 4000)
             return True
         if self.dependency_exists(source_id, target_id):
-            self.statusBar().showMessage(f"{source_id} -> {target_id} は既に存在します", 4000)
+            self.statusBar().showMessage(f"{self.task_label(source_id)} → {self.task_label(target_id)} は既に存在します", 4000)
             return True
         if self.would_create_cycle(source_id, target_id):
-            self.statusBar().showMessage(f"{source_id} -> {target_id} は循環依存になるため追加できません", 5000)
+            self.statusBar().showMessage(f"{self.task_label(source_id)} → {self.task_label(target_id)} は循環依存になるため追加できません", 5000)
             return True
 
         dep = {"from": source_id, "to": target_id}
@@ -1812,7 +1729,7 @@ class MainWindow(QMainWindow):
         self.clear_dependency_source()
         self.mark_editor_modified(rebuild_graph=True)
         self.refresh_dependency_pick_styles()
-        self.statusBar().showMessage(f"依存関係を追加しました: {source_id} -> {target_id}。続けて依存元をクリックできます", 5000)
+        self.statusBar().showMessage(f"依存関係を追加しました: {self.dependency_label(dep)}。続けて依存元をクリックできます", 5000)
         return True
 
     def handle_canvas_empty_click(self) -> bool:
@@ -2315,10 +2232,6 @@ class MainWindow(QMainWindow):
         if event.key() == Qt.Key_Escape and self.is_dependency_pick_mode:
             self.cancel_dependency_pick_mode()
             self.statusBar().showMessage("依存関係の追加をキャンセルしました", 3000)
-            event.accept()
-            return
-        if event.key() == Qt.Key_Delete and self.selected_kind == "dependency":
-            self.delete_selected_item()
             event.accept()
             return
         super().keyPressEvent(event)
