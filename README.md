@@ -19,7 +19,7 @@ pyTaskFlow は、タスクの順序や成果物とのつながりを、見やす
 
 ## はじめかた
 
-Windows と Linux で利用できます。初回セットアップには Python 3.10 以上とインターネット接続が必要です。まず、このリポジトリのファイル一式をダウンロードして展開してください。
+Windows と Linux で利用できます。Python 3.10 以上が必要です。
 
 ### Windows
 
@@ -28,7 +28,7 @@ Windows と Linux で利用できます。初回セットアップには Python 
 
 ### Linux
 
-Python 3 と `venv`（仮想環境）を利用できるようにしてから、ターミナルでアプリのフォルダーへ移動し、次のコマンドを実行します。
+次のコマンドでセットアップします。
 
 ```bash
 chmod +x setup.sh pyTaskFlow.sh
@@ -40,8 +40,6 @@ chmod +x setup.sh pyTaskFlow.sh
 ```bash
 ./pyTaskFlow.sh
 ```
-
-セットアップにはインターネット接続が必要です。Linux で仮想環境を作成できない場合は、お使いのディストリビューションの案内に従って Python の `venv` パッケージをインストールしてください。
 
 ## 基本操作
 
