@@ -434,6 +434,8 @@ class TaskNodeItem(QGraphicsRectItem):
         self.expanded = False
         self.resource_items = []
         self._click_start = None
+        self._selected_on_click = False
+        self._last_click_toggled = False
 
         # Ordinary scene items avoid an effect cache over resource children that
         # are removed when the node collapses.
@@ -618,24 +620,43 @@ class TaskNodeItem(QGraphicsRectItem):
             if self.app_window.handle_dependency_target_click(self):
                 event.accept()
                 return
+            self._selected_on_click = (
+                self.app_window.selected_task_id() == self.task_id
+            )
+            self._last_click_toggled = False
             self._click_start = event.screenPos()
             self.app_window.select_task_node(self)
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton:
-            # The first click already toggled the details.
+            if not self._last_click_toggled:
+                self.app_window.schedule_task_node_toggle(self)
             self._click_start = None
+            self._selected_on_click = False
+            self._last_click_toggled = False
             event.accept()
             return
         super().mouseDoubleClickEvent(event)
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
-        if event.button() == Qt.LeftButton and self._click_start is not None:
-            distance = (event.screenPos() - self._click_start).manhattanLength()
+        if event.button() == Qt.LeftButton:
+            should_toggle = False
+            is_click = False
+            if self._click_start is not None:
+                distance = (event.screenPos() - self._click_start).manhattanLength()
+                is_click = distance < QApplication.startDragDistance()
+                should_toggle = is_click and self._selected_on_click
+            if is_click and not self._selected_on_click:
+                expanded_node = self.app_window.expanded_node
+                if expanded_node is not None and expanded_node is not self:
+                    expanded_node.set_expanded(False)
+                    self.app_window.expanded_node = None
             self._click_start = None
-            if distance < QApplication.startDragDistance():
+            self._selected_on_click = False
+            self._last_click_toggled = should_toggle
+            if should_toggle:
                 self.app_window.schedule_task_node_toggle(self)
         if not self.app_window._layout_in_progress:
             self.app_window.update_group_items()
