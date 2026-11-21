@@ -30,6 +30,16 @@ if [ ! -x "$VENV_PYTHON" ]; then
     fi
 fi
 
+# Ensure pip exists in the virtual environment.
+if ! "$VENV_PYTHON" -m pip --version >/dev/null 2>&1; then
+    echo "pip was not found in the virtual environment. Attempting to install it..."
+
+    if ! "$VENV_PYTHON" -m ensurepip --upgrade; then
+        echo "Failed to install pip. Install python3-venv and python3-pip, then try again." >&2
+        exit 1
+    fi
+fi
+
 if ! "$VENV_PYTHON" -m pip install --upgrade pip; then
     echo "Failed to upgrade pip." >&2
     exit 1
